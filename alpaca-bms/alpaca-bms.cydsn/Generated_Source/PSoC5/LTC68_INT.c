@@ -18,6 +18,7 @@
 
 #include "LTC68_PVT.h"
 
+
 /* User code required at start of ISR */
 /* `#START LTC68_ISR_START_DEF` */
 
@@ -54,11 +55,15 @@ CY_ISR(LTC68_TX_ISR)
         uint8 tmpStatus;
     #endif /* (LTC68_TX_SOFTWARE_BUF_ENABLED) */
 
+    #ifdef LTC68_TX_ISR_ENTRY_CALLBACK
+        LTC68_TX_ISR_EntryCallback();
+    #endif /* LTC68_TX_ISR_ENTRY_CALLBACK */
+
     /* User code required at start of ISR */
     /* `#START LTC68_TX_ISR_START` */
 
     /* `#END` */
-
+    
     #if(LTC68_TX_SOFTWARE_BUF_ENABLED)
         /* Check if TX data buffer is not empty and there is space in TX FIFO */
         while(LTC68_txBufferRead != LTC68_txBufferWrite)
@@ -104,6 +109,10 @@ CY_ISR(LTC68_TX_ISR)
     /* `#START LTC68_TX_ISR_END` */
 
     /* `#END` */
+    
+    #ifdef LTC68_TX_ISR_EXIT_CALLBACK
+        LTC68_TX_ISR_ExitCallback();
+    #endif /* LTC68_TX_ISR_EXIT_CALLBACK */
 }
 
 
@@ -138,11 +147,15 @@ CY_ISR(LTC68_RX_ISR)
         uint8 rxData;
     #endif /* (LTC68_RX_SOFTWARE_BUF_ENABLED) */
 
+    #ifdef LTC68_RX_ISR_ENTRY_CALLBACK
+        LTC68_RX_ISR_EntryCallback();
+    #endif /* LTC68_RX_ISR_ENTRY_CALLBACK */
+
     /* User code required at start of ISR */
     /* `#START LTC68_RX_ISR_START` */
 
     /* `#END` */
-
+    
     #if(LTC68_RX_SOFTWARE_BUF_ENABLED)
 
         tmpStatus = LTC68_GET_STATUS_RX(LTC68_swStatusRx);
@@ -184,6 +197,10 @@ CY_ISR(LTC68_RX_ISR)
     /* `#START LTC68_RX_ISR_END` */
 
     /* `#END` */
+    
+    #ifdef LTC68_RX_ISR_EXIT_CALLBACK
+        LTC68_RX_ISR_ExitCallback();
+    #endif /* LTC68_RX_ISR_EXIT_CALLBACK */
 }
 
 /* [] END OF FILE */

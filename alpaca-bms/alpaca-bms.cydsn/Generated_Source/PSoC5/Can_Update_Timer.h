@@ -36,7 +36,7 @@ extern uint8 Can_Update_Timer_initVar;
 *           Parameter Defaults
 **************************************/
 
-#define Can_Update_Timer_Resolution                 8u
+#define Can_Update_Timer_Resolution                 16u
 #define Can_Update_Timer_UsingFixedFunction         1u
 #define Can_Update_Timer_UsingHWCaptureCounter      0u
 #define Can_Update_Timer_SoftwareCaptureMode        0u
@@ -69,7 +69,7 @@ typedef struct
     uint8 TimerEnableState;
     #if(!Can_Update_Timer_UsingFixedFunction)
 
-        uint8 TimerUdb;
+        uint16 TimerUdb;
         uint8 InterruptMaskValue;
         #if (Can_Update_Timer_UsingHWCaptureCounter)
             uint8 TimerCaptureCounter;
@@ -100,11 +100,11 @@ uint8   Can_Update_Timer_ReadStatusRegister(void) ;
     void    Can_Update_Timer_WriteControlRegister(uint8 control) ;
 #endif /* (!Can_Update_Timer_UDB_CONTROL_REG_REMOVED) */
 
-uint8  Can_Update_Timer_ReadPeriod(void) ;
-void    Can_Update_Timer_WritePeriod(uint8 period) ;
-uint8  Can_Update_Timer_ReadCounter(void) ;
-void    Can_Update_Timer_WriteCounter(uint8 counter) ;
-uint8  Can_Update_Timer_ReadCapture(void) ;
+uint16  Can_Update_Timer_ReadPeriod(void) ;
+void    Can_Update_Timer_WritePeriod(uint16 period) ;
+uint16  Can_Update_Timer_ReadCounter(void) ;
+void    Can_Update_Timer_WriteCounter(uint16 counter) ;
+uint16  Can_Update_Timer_ReadCapture(void) ;
 void    Can_Update_Timer_SoftwareCapture(void) ;
 
 #if(!Can_Update_Timer_UsingFixedFunction) /* UDB Prototypes */
@@ -168,7 +168,7 @@ void Can_Update_Timer_Wakeup(void)        ;
 *    Initialial Parameter Constants
 ***************************************/
 
-#define Can_Update_Timer_INIT_PERIOD             255u
+#define Can_Update_Timer_INIT_PERIOD             511u
 #define Can_Update_Timer_INIT_CAPTURE_MODE       ((uint8)((uint8)1u << Can_Update_Timer_CTRL_CAP_MODE_SHIFT))
 #define Can_Update_Timer_INIT_TRIGGER_MODE       ((uint8)((uint8)0u << Can_Update_Timer_CTRL_TRIG_MODE_SHIFT))
 #if (Can_Update_Timer_UsingFixedFunction)
@@ -313,54 +313,54 @@ void Can_Update_Timer_Wakeup(void)        ;
     #define Can_Update_Timer_CONTROL             (* (reg8 *) Can_Update_Timer_TimerUDB_sCTRLReg_SyncCtl_ctrlreg__CONTROL_REG )
     
     #if(Can_Update_Timer_Resolution <= 8u) /* 8-bit Timer */
-        #define Can_Update_Timer_CAPTURE_LSB         (* (reg8 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__F0_REG )
-        #define Can_Update_Timer_CAPTURE_LSB_PTR       ((reg8 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__F0_REG )
-        #define Can_Update_Timer_PERIOD_LSB          (* (reg8 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__D0_REG )
-        #define Can_Update_Timer_PERIOD_LSB_PTR        ((reg8 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__D0_REG )
-        #define Can_Update_Timer_COUNTER_LSB         (* (reg8 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__A0_REG )
-        #define Can_Update_Timer_COUNTER_LSB_PTR       ((reg8 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__A0_REG )
+        #define Can_Update_Timer_CAPTURE_LSB         (* (reg8 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__F0_REG )
+        #define Can_Update_Timer_CAPTURE_LSB_PTR       ((reg8 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__F0_REG )
+        #define Can_Update_Timer_PERIOD_LSB          (* (reg8 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__D0_REG )
+        #define Can_Update_Timer_PERIOD_LSB_PTR        ((reg8 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__D0_REG )
+        #define Can_Update_Timer_COUNTER_LSB         (* (reg8 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__A0_REG )
+        #define Can_Update_Timer_COUNTER_LSB_PTR       ((reg8 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__A0_REG )
     #elif(Can_Update_Timer_Resolution <= 16u) /* 8-bit Timer */
         #if(CY_PSOC3) /* 8-bit addres space */
-            #define Can_Update_Timer_CAPTURE_LSB         (* (reg16 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__F0_REG )
-            #define Can_Update_Timer_CAPTURE_LSB_PTR       ((reg16 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__F0_REG )
-            #define Can_Update_Timer_PERIOD_LSB          (* (reg16 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__D0_REG )
-            #define Can_Update_Timer_PERIOD_LSB_PTR        ((reg16 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__D0_REG )
-            #define Can_Update_Timer_COUNTER_LSB         (* (reg16 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__A0_REG )
-            #define Can_Update_Timer_COUNTER_LSB_PTR       ((reg16 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__A0_REG )
+            #define Can_Update_Timer_CAPTURE_LSB         (* (reg16 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__F0_REG )
+            #define Can_Update_Timer_CAPTURE_LSB_PTR       ((reg16 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__F0_REG )
+            #define Can_Update_Timer_PERIOD_LSB          (* (reg16 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__D0_REG )
+            #define Can_Update_Timer_PERIOD_LSB_PTR        ((reg16 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__D0_REG )
+            #define Can_Update_Timer_COUNTER_LSB         (* (reg16 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__A0_REG )
+            #define Can_Update_Timer_COUNTER_LSB_PTR       ((reg16 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__A0_REG )
         #else /* 16-bit address space */
-            #define Can_Update_Timer_CAPTURE_LSB         (* (reg16 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__16BIT_F0_REG )
-            #define Can_Update_Timer_CAPTURE_LSB_PTR       ((reg16 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__16BIT_F0_REG )
-            #define Can_Update_Timer_PERIOD_LSB          (* (reg16 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__16BIT_D0_REG )
-            #define Can_Update_Timer_PERIOD_LSB_PTR        ((reg16 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__16BIT_D0_REG )
-            #define Can_Update_Timer_COUNTER_LSB         (* (reg16 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__16BIT_A0_REG )
-            #define Can_Update_Timer_COUNTER_LSB_PTR       ((reg16 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__16BIT_A0_REG )
+            #define Can_Update_Timer_CAPTURE_LSB         (* (reg16 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__16BIT_F0_REG )
+            #define Can_Update_Timer_CAPTURE_LSB_PTR       ((reg16 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__16BIT_F0_REG )
+            #define Can_Update_Timer_PERIOD_LSB          (* (reg16 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__16BIT_D0_REG )
+            #define Can_Update_Timer_PERIOD_LSB_PTR        ((reg16 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__16BIT_D0_REG )
+            #define Can_Update_Timer_COUNTER_LSB         (* (reg16 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__16BIT_A0_REG )
+            #define Can_Update_Timer_COUNTER_LSB_PTR       ((reg16 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__16BIT_A0_REG )
         #endif /* CY_PSOC3 */
     #elif(Can_Update_Timer_Resolution <= 24u)/* 24-bit Timer */
-        #define Can_Update_Timer_CAPTURE_LSB         (* (reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__F0_REG )
-        #define Can_Update_Timer_CAPTURE_LSB_PTR       ((reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__F0_REG )
-        #define Can_Update_Timer_PERIOD_LSB          (* (reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__D0_REG )
-        #define Can_Update_Timer_PERIOD_LSB_PTR        ((reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__D0_REG )
-        #define Can_Update_Timer_COUNTER_LSB         (* (reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__A0_REG )
-        #define Can_Update_Timer_COUNTER_LSB_PTR       ((reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__A0_REG )
+        #define Can_Update_Timer_CAPTURE_LSB         (* (reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__F0_REG )
+        #define Can_Update_Timer_CAPTURE_LSB_PTR       ((reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__F0_REG )
+        #define Can_Update_Timer_PERIOD_LSB          (* (reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__D0_REG )
+        #define Can_Update_Timer_PERIOD_LSB_PTR        ((reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__D0_REG )
+        #define Can_Update_Timer_COUNTER_LSB         (* (reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__A0_REG )
+        #define Can_Update_Timer_COUNTER_LSB_PTR       ((reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__A0_REG )
     #else /* 32-bit Timer */
         #if(CY_PSOC3 || CY_PSOC5) /* 8-bit address space */
-            #define Can_Update_Timer_CAPTURE_LSB         (* (reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__F0_REG )
-            #define Can_Update_Timer_CAPTURE_LSB_PTR       ((reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__F0_REG )
-            #define Can_Update_Timer_PERIOD_LSB          (* (reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__D0_REG )
-            #define Can_Update_Timer_PERIOD_LSB_PTR        ((reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__D0_REG )
-            #define Can_Update_Timer_COUNTER_LSB         (* (reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__A0_REG )
-            #define Can_Update_Timer_COUNTER_LSB_PTR       ((reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__A0_REG )
+            #define Can_Update_Timer_CAPTURE_LSB         (* (reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__F0_REG )
+            #define Can_Update_Timer_CAPTURE_LSB_PTR       ((reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__F0_REG )
+            #define Can_Update_Timer_PERIOD_LSB          (* (reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__D0_REG )
+            #define Can_Update_Timer_PERIOD_LSB_PTR        ((reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__D0_REG )
+            #define Can_Update_Timer_COUNTER_LSB         (* (reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__A0_REG )
+            #define Can_Update_Timer_COUNTER_LSB_PTR       ((reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__A0_REG )
         #else /* 32-bit address space */
-            #define Can_Update_Timer_CAPTURE_LSB         (* (reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__32BIT_F0_REG )
-            #define Can_Update_Timer_CAPTURE_LSB_PTR       ((reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__32BIT_F0_REG )
-            #define Can_Update_Timer_PERIOD_LSB          (* (reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__32BIT_D0_REG )
-            #define Can_Update_Timer_PERIOD_LSB_PTR        ((reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__32BIT_D0_REG )
-            #define Can_Update_Timer_COUNTER_LSB         (* (reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__32BIT_A0_REG )
-            #define Can_Update_Timer_COUNTER_LSB_PTR       ((reg32 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__32BIT_A0_REG )
+            #define Can_Update_Timer_CAPTURE_LSB         (* (reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__32BIT_F0_REG )
+            #define Can_Update_Timer_CAPTURE_LSB_PTR       ((reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__32BIT_F0_REG )
+            #define Can_Update_Timer_PERIOD_LSB          (* (reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__32BIT_D0_REG )
+            #define Can_Update_Timer_PERIOD_LSB_PTR        ((reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__32BIT_D0_REG )
+            #define Can_Update_Timer_COUNTER_LSB         (* (reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__32BIT_A0_REG )
+            #define Can_Update_Timer_COUNTER_LSB_PTR       ((reg32 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__32BIT_A0_REG )
         #endif /* CY_PSOC3 || CY_PSOC5 */ 
     #endif
 
-    #define Can_Update_Timer_COUNTER_LSB_PTR_8BIT       ((reg8 *) Can_Update_Timer_TimerUDB_sT8_timerdp_u0__A0_REG )
+    #define Can_Update_Timer_COUNTER_LSB_PTR_8BIT       ((reg8 *) Can_Update_Timer_TimerUDB_sT16_timerdp_u0__A0_REG )
     
     #if (Can_Update_Timer_UsingHWCaptureCounter)
         #define Can_Update_Timer_CAP_COUNT              (*(reg8 *) Can_Update_Timer_TimerUDB_sCapCount_counter__PERIOD_REG )

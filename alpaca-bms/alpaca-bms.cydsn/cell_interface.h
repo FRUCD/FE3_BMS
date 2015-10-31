@@ -56,6 +56,7 @@ Copyright 2013 Linear Technology Corp. (LTC)
     #define ERROR_VOLTAGE_LIMIT (3u)
     #define ERROR_TEMPERATURE_LIMIT (3u)
     #define FUSE_BAD_LIMIT (3u)
+    #define BAD_FILTER_LIMIT (5u)
     
     #define CELL_ENABLE (0x1cf)
     #define OVER_VOLTAGE (42000u)
@@ -65,11 +66,20 @@ Copyright 2013 Linear Technology Corp. (LTC)
     #define CRITICAL_TEMP_H (10213u)             //1.0213V  10213
     #define BAD_THERM_LIMIT (8u)
     
+    #define N_OF_CELL (84u)
+    #define N_OF_TEMP (60u)
+    #define N_OF_NODE (6u)
+    #define N_OF_STACK (3u)
 
     //#define DEBUG_LCD 0
 
     #define OVER_TEMP (90u)             //now it just for debug purpose
     #define UNDER_TEMP (0u)
+
+    #define THERM_CELL (0u)
+    #define THERM_BOARD (0u)
+
+
 
 typedef enum {
   NORMAL =0,
@@ -122,9 +132,50 @@ typedef struct
   int16_t current;
 }BATTERYPACK;
 
+//new data stucture
 
+typedef struct 
+{
+  uint16_t voltage;
+  uint8_t bad_counter;
+  uint8_t bad_type;
+}BAT_CELL_t;
 
+typedef struct
+{
+  uint16_t temp;
+  uint8_t bad_counter;
+  uint8_t type;
+  uint8_t bad_type;
+}BAT_TEMP_t;
 
+typedef struct
+{
+  BAT_CELL_t *cells[14];
+  BAT_TEMP_t *temps[10];
+  uint16_t over_temp;
+  uint16_t under_temp;
+  uint16_t over_voltage;
+  uint16_t under_voltage;
+}BAT_NODE_t;
+
+typedef struct 
+{
+  BAT_NODE_t *nodes[2];
+  uint32_t voltage;
+  uint8_t bad_counter;
+}BAT_STACK_t;
+
+typedef struct
+{
+  BAT_STACK_t *stacks[3];
+  BAT_NODE_t *nodes[6];
+  uint32_t voltage;
+  uint16_t current;
+  uint8_t fuse_fault;
+  uint8_t bad_counter;
+  uint8_t status;
+}BAT_PACK_t;
 
 
 
@@ -208,12 +259,29 @@ uint8_t get_cell_temp();
 void update_volt(uint16_t cell_codes[TOTAL_IC][12]);
 
 /**
+ * @check voltage and detect error
+ *
+ * @param no input
+ * @return NULL.
+ */
+void check_volt();
+
+/**
  * @update temperature and detect error
  *
  * @param 1 input parameters, which is raw aux_codes.
  * @return NULL.
  */
 void update_temp(uint16_t aux_codes[TOTAL_IC][6]);
+
+/**
+ * @check temperature and detect error
+ *
+ * @param no input param
+ * @return NULL.
+ */
+void check_volt();
+
 
 /**
  * @initial mypack
@@ -224,12 +292,28 @@ void update_temp(uint16_t aux_codes[TOTAL_IC][6]);
 void mypack_init();
 
 /**
+ * @cell balancing
+ *
+ * @param no input parameters.
+ * @return NULL.
+ */
+void balance_cell();
+
+/**
  * @check is fuse is broken
  *
  * @param no input parameters. (use global mypack)
  * @return NULL.
  */
 void check_stack_fuse();
+
+/**
+ * @check is fuse is broken
+ *
+ * @param no input parameters. (use global mypack)
+ * @return NULL.
+ */
+void bat_err_add(uint8_t, uint8_t, uint8_t);
 
 uint8_t temp_transfer(uint16_t);
 

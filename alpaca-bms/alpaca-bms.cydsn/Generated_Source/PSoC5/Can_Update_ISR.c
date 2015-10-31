@@ -20,6 +20,7 @@
 #include <CyLib.h>
 #include <Can_Update_ISR.h>
 
+
 #if !defined(Can_Update_ISR__REMOVED) /* Check for removal by optimization */
 
 /*******************************************************************************
@@ -158,6 +159,10 @@ void Can_Update_ISR_Stop(void)
 *******************************************************************************/
 CY_ISR(Can_Update_ISR_Interrupt)
 {
+    #ifdef Can_Update_ISR_INTERRUPT_INTERRUPT_CALLBACK
+        Can_Update_ISR_Interrupt_InterruptCallback();
+    #endif /* Can_Update_ISR_INTERRUPT_INTERRUPT_CALLBACK */ 
+
     /*  Place your Interrupt code here. */
     /* `#START Can_Update_ISR_Interrupt` */
 

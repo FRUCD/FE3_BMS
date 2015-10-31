@@ -20,6 +20,7 @@
 #include <CyLib.h>
 #include <WDT_ISR.h>
 
+
 #if !defined(WDT_ISR__REMOVED) /* Check for removal by optimization */
 
 /*******************************************************************************
@@ -158,6 +159,10 @@ void WDT_ISR_Stop(void)
 *******************************************************************************/
 CY_ISR(WDT_ISR_Interrupt)
 {
+    #ifdef WDT_ISR_INTERRUPT_INTERRUPT_CALLBACK
+        WDT_ISR_Interrupt_InterruptCallback();
+    #endif /* WDT_ISR_INTERRUPT_INTERRUPT_CALLBACK */ 
+
     /*  Place your Interrupt code here. */
     /* `#START WDT_ISR_Interrupt` */
 

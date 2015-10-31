@@ -18,6 +18,7 @@
 #include "ADC_current.h"
 
 
+
 /*******************************************************************************
 * Custom Declarations and Variables
 * - add user include files, prototypes and variables between the following
@@ -26,7 +27,6 @@
 /* `#START ADC_SYS_VAR`  */
 
 /* `#END`  */
-
 
 #if(ADC_current_IRQ_REMOVE == 0u)
 
@@ -50,6 +50,11 @@
     *****************************************************************************/
     CY_ISR( ADC_current_ISR1)
     {
+        #ifdef ADC_current_ISR1_ENTRY_CALLBACK
+            ADC_current_ISR1_EntryCallback();
+        #endif /* ADC_current_ISR1_ENTRY_CALLBACK */
+        
+
         /**************************************************************************
         *  Custom Code
         *  - add user ISR code between the following #START and #END tags
@@ -57,7 +62,7 @@
         /* `#START MAIN_ADC_ISR1`  */
 
         /* `#END`  */
-
+        
         /* Stop the conversion if conversion mode is single sample and resolution
         *  is above 16 bits.
         */
@@ -70,6 +75,9 @@
             ADC_current_convDone = ADC_current_DEC_CONV_DONE;
         #endif /* Single sample conversion mode with resolution above 16 bits */
 
+        #ifdef ADC_current_ISR1_EXIT_CALLBACK
+            ADC_current_ISR1_ExitCallback();
+        #endif /* ADC_current_ISR1_EXIT_CALLBACK */
     }
 
 
@@ -92,6 +100,11 @@
     *****************************************************************************/
     CY_ISR( ADC_current_ISR2)
     {
+        #ifdef ADC_current_ISR2_ENTRY_CALLBACK
+            ADC_current_ISR2_EntryCallback();
+        #endif /* ADC_current_ISR2_ENTRY_CALLBACK */
+        
+        
         /***************************************************************************
         *  Custom Code
         *  - add user ISR code between the following #START and #END tags
@@ -112,6 +125,9 @@
             ADC_current_convDone = ADC_current_DEC_CONV_DONE;
         #endif /* Single sample conversion mode with resolution above 16 bits */
 
+        #ifdef ADC_current_ISR2_EXIT_CALLBACK
+            ADC_current_ISR2_ExitCallback();
+        #endif /* ADC_current_ISR2_EXIT_CALLBACK */
     }
 
 
@@ -134,6 +150,11 @@
     *****************************************************************************/
     CY_ISR( ADC_current_ISR3)
     {
+        #ifdef ADC_current_ISR3_ENTRY_CALLBACK
+            ADC_current_ISR3_EntryCallback();
+        #endif /* ADC_current_ISR3_ENTRY_CALLBACK */        
+
+        
         /***************************************************************************
         *  Custom Code
         *  - add user ISR code between the following #START and #END tags
@@ -141,7 +162,7 @@
         /* `#START MAIN_ADC_ISR3`  */
 
         /* `#END`  */
-
+        
         /* Stop the conversion if conversion mode is set to single sample and
         *  resolution is above 16 bits.
         */
@@ -153,6 +174,10 @@
 			*/
             ADC_current_convDone = ADC_current_DEC_CONV_DONE;
         #endif /* Single sample conversion mode with resolution above 16 bits */
+
+        #ifdef ADC_current_ISR3_EXIT_CALLBACK
+            ADC_current_ISR3_ExitCallback();
+        #endif /* ADC_current_ISR3_EXIT_CALLBACK */        
     }
 
 
@@ -175,6 +200,11 @@
     *****************************************************************************/
     CY_ISR( ADC_current_ISR4)
     {
+        #ifdef ADC_current_ISR4_ENTRY_CALLBACK
+            ADC_current_ISR4_EntryCallback();
+        #endif /* ADC_current_ISR4_ENTRY_CALLBACK */            
+
+        
         /***************************************************************************
         *  Custom Code
         *  - add user ISR code between the following #START and #END tags
@@ -194,6 +224,10 @@
 			*/
             ADC_current_convDone = ADC_current_DEC_CONV_DONE;
         #endif /* Single sample conversion mode with resolution above 16 bits */
+        
+        #ifdef ADC_current_ISR4_EXIT_CALLBACK
+            ADC_current_ISR4_ExitCallback();
+        #endif /* ADC_current_ISR4_EXIT_CALLBACK */            
     }
 
 #endif   /* End ADC_current_IRQ_REMOVE */

@@ -51,7 +51,6 @@ int main(void)
 	bms_init();
 	mypack_init();
     //monitor_init();
-
 	current_init();
     
     //enable global interrupt
@@ -103,12 +102,12 @@ int main(void)
 
 		
         if(CAN_UPDATE_FLAG){
-            can_send_volt();
+            can_send_volt();	//this is heartbeat
             can_send_temp();
             can_send_current();
             CAN_UPDATE_FLAG=0;
         }
-		CyDelay(100); // wait for next cycle
+		CyDelay(100); // wait for next cycle. System working in 10Hz
 	} // main loop
 
 
@@ -194,7 +193,7 @@ int main(void)
 
 
 		CyDelay(500);
-	}
+	}//fault loop
     
     
 	return 0;

@@ -62,6 +62,13 @@ extern volatile uint8_t error_CHIP;
 volatile uint8_t error_voltage_count=0;
 volatile uint8_t error_temperature_count=0;
 volatile BATTERYPACK mypack;
+// FE3 new structure
+volatile BAT_CELL_t bat_cell[N_OF_CELL];
+volatile BAT_TEMP_t bat_temp[N_OF_TEMP];
+volatile BAT_NODE_t bat_node[N_OF_NODE];
+volatile BAT_STACK_t bat_stack[N_OF_STACK];
+volatile BAT_ERR_t bat_err;
+
 extern volatile uint8_t CAN_DEBUG;
 volatile uint8_t bad_therm=0;
 
@@ -136,6 +143,7 @@ uint8_t get_cell_volt(){
     
     
     //check error
+    check_voltage();
     if (mypack.status!=NORMAL){
         if (mypack.bad_cell_index>0){
             return 1;
@@ -167,6 +175,7 @@ uint8_t get_cell_temp(){
     update_temp(aux_codes);
 
     //check error
+    check_temp();
     //check error
     if (mypack.status!=NORMAL){
         if (mypack.bad_temp_index>0){
@@ -238,92 +247,98 @@ uint8_t check_cells(){
 void update_volt(uint16_t cell_codes[TOTAL_IC][12]){
     uint8_t cell=0;
     uint8_t raw_cell=0;
+    uint8_t node = 0;
     uint8_t ic=0;
     uint32_t stack_volt=0;
     uint8_t stack=0;
     uint16_t voltage;
+    uint32_t temp_volt;
 
     //log in voltage data
     for (ic=0;ic<TOTAL_IC;ic++){
         for (raw_cell=0;raw_cell<12;raw_cell++){
             if ((CELL_ENABLE & (0x1<<raw_cell))){
-                mypack.cell[ic/4][ic%4][cell].value16=cell_codes[ic][raw_cell];
+                bat_cell[cell].voltage = cell_codes[ic][raw_cell];
                 cell++;
             }
         }
         cell=0;
     }
 
-    voltage_compensation();
+    // voltage_compensation();
     
-    //update stack voltage
-    ic=0;
-    cell=0;
-    stack_volt=0;
-    for (stack =0; stack<3;stack++){
-        for (ic=0;ic<4;ic++){
-            cell=0;
-            for (cell=0;cell<7;cell++){
-                stack_volt=stack_volt+(uint32_t)mypack.cell[stack][ic][cell].value16;
+    // FE3 update 3 stacks voltage
+    node = 0;
+    cell = 0;
+    stack = 0;
+    temp_volt = 0;
+    for (stack = 0; stack<3; stack++){
+        for (node = 0; node<2; node++){
+            for (cell = 0; cell<14; cell++){
+                temp_volt += (uint32_t)(bat_stack[stack].node[node]->cells[cell]->voltage);
             }
         }
-        mypack.stack[stack].value32=stack_volt;
-        stack_volt=0;
+        bat_stack[stack].voltage = temp_volt;
     }
 
-    
-    
-    //update pack voltage
-    stack_volt=0;
-    for (stack =0;stack<3;stack++){
-        stack_volt = stack_volt + mypack.stack[stack].value32;
+    // FE3 update pack voltage
+    stack = 0;
+    for (stack = 0; stack<3; stack++){
+        temp_volt += bat_pack.stacks[stack]->voltage;
     }
-    mypack.pack.value32=stack_volt;
-
-
-    //update healthy status
-    for (stack = 0; stack <3;stack ++){
-        for (ic =0; ic< 4;ic++){
-            for (cell=0;cell<7;cell++){
-                voltage = mypack.cell[stack][ic][cell].value16;
-                if (voltage > (uint16_t)OVER_VOLTAGE){
-                    mypack.cell[stack][ic][cell].bad_counter++;
-                    mypack.cell[stack][ic][cell].bad=1;
-                }else if (voltage < (uint16_t)UNDER_VOLTAGE){
-                    mypack.cell[stack][ic][cell].bad_counter++;
-                    mypack.cell[stack][ic][cell].bad=0;
-                }else{
-                    if (mypack.cell[stack][ic][cell].bad_counter>0){
-                        mypack.cell[stack][ic][cell].bad_counter--;
-                    }
-                   
-                }
-
-                //check faulty cell
-                if (mypack.cell[stack][ic][cell].bad_counter>ERROR_VOLTAGE_LIMIT){
-                    mypack.bad_cell[mypack.bad_cell_index].stack=stack;
-                    mypack.bad_cell[mypack.bad_cell_index].ic=ic;
-                    mypack.bad_cell[mypack.bad_cell_index].cell=cell;
-                    mypack.bad_cell[mypack.bad_cell_index].error=mypack.cell[stack][ic][cell].bad;
-                    if (mypack.bad_cell[mypack.bad_cell_index].error==0){
-                      fatal_err |= CELL_VOLT_UNDER;
-                    }else{
-                        fatal_err |= CELL_VOLT_OVER;
-                    }
-                    if (mypack.bad_cell_index<255){
-                        mypack.bad_cell_index++;
-                    }else{
-                        mypack.bad_cell_index=255;
-                    }
-                    mypack.status = FAULT;
-                }
-            }
-        }
-    }
-    
-
+    bat_pack.voltage = temp_volt;
 
 }
+
+void check_voltage(){
+    uint8_t cell = 0;
+    uint8_t temp = 0;
+    uint16_t voltage16 = 0;
+    uint32_t voltage32 = 0;
+    // update each cell
+    for (cell = 0; cell<N_OF_CELL; cell++){
+        voltage16 = bat_cell[cell].voltage;
+        if (voltage > (uint16_t)OVER_VOLTAGE){
+            bat_cell[cell].bad_counter++;
+            bat_cell[cell].bad_type = 1;
+        }else if (voltage < (uint16_t)UNDER_VOLTAGE){
+            bat_cell[cell].bad_counter++;
+            bat_cell[cell].bad_type = 0;
+        }else{
+            if (bat_cell[cell].bad_counter>0){
+                bat_cell[cell].bad_counter--;
+            }           
+        }
+    }
+
+    // update node
+    for (node = 0; node< N_OF_NODE; node++){
+        for (cell = 0; cell<14; cell++){
+            if (bat_node[node].cells[cell]->bad_counter > ERROR_VOLTAGE_LIMIT){
+                if (bat_node[node].cells[cell]->bad_type == 0){
+                    bad_node[node].under_voltage |= (1u<<cell);
+                }else{
+                    bad_node[node].over_voltage |= (1u<<cell);
+                }
+            }
+        }
+    }
+
+    // update pack of cell voltage error
+    for (node = 0; stack < N_OF_NODE; node++){
+        if (bat_pack.nodes[node].over_voltage != 0){
+            bat_pack.status |= CELL_VOLT_OVER;
+            bat_err_add(CELL_VOLT_OVER, bat_node[node].over_voltage, node);
+        }
+
+        if (bat_pack.nodes[node].under_voltage != 0){
+            bat_pack.status  |= CELL_VOLT_UNDER;
+            bat_err_add(CELL_VOLT_UNDER, bat_node[node].under_voltage, node);
+        }
+    }
+        
+}
+
                 
 
 
@@ -335,83 +350,66 @@ void update_temp(uint16_t aux_codes[TOTAL_IC][6]){
     uint8_t i=0;
     uint8_t temp_found=0;
 
-    //log in temp data    
-		/*
-    for (ic=0;ic<TOTAL_IC;ic++){
-        for (cell=0;cell<5;cell++){
-            mypack.temp[ic/4][(ic%4)*5+cell].value16 = aux_codes[ic][cell];        
+
+
+    // FE3 new data structure
+    // update node
+    temp = 0;
+    for (ic = 0; ic < 12; ic++){
+        for (i = 0; i < 6; i++){
+            bat_temp[temp].temp = aux_codes[ic][i];
         }
     }
-		*/
 
-		uint8_t therm;
-		ic = 0;
-		for(stack = 0; stack < 3; stack++)
-		{
-			for(therm = 0; therm < 20; therm++)
-			{
-				mypack.temp[stack][therm].value16 = aux_codes[ic][therm%5];        
-
-				if((therm%5) == 4)
-					ic++;
-			} // for thermistors
-		} // for stack
+}
 
 
-    
-    //update healthy status
-    
-		for (stack = 0; stack < 3; stack++)
-		{
-			for (cell=0; cell<20; cell++)
-			{
-				temp = mypack.temp[stack][cell].value16;
+void check_temp()){
+    uint8_t temp;
+    uint8_t node;
+    uint16_t temp16;
 
+    // check temp
+    for (node = 0; node<N_OF_TEMP; node++){
+        temp16 = bat_temp[node].temp;
+        if (temp16 > (uint16_t)CRITICAL_TEMP_H){
+            bat_temp[temp].bad_counter++;
+            bat_temp[temp].bad_type = 1;
+        }else if (temp16 < (uint16_t)CRITICAL_TEMP_L){
+            bat_temp[temp].bad_counter++;
+            bat_temp[temp].bad_type = 0;
+        }else{
+            if (bat_temp[temp].bad_counter>0){
+                bat_temp[temp].bad_counter--;
+            }           
+        }
+    }
 
-				if (temp < CRITICAL_TEMP_H && // is critical
-					mypack.temp[stack][cell].bad_counter != 255) // saturate counter
-				{
-					mypack.temp[stack][cell].bad_counter++;
-				}
-				else
-					if (mypack.temp[stack][cell].bad_counter>0)
-						mypack.temp[stack][cell].bad_counter--;
+    // update node
+    for (node = 0; node< N_OF_NODE; node++){
+        for (temp = 0; temp<10; temp++){
+            if (bat_node[node].temps[temp]->bad_counter > ERROR_TEMPERATURE_LIMIT){
+                if (bat_node[node].temps[temp]->bad_type == 0){
+                    bad_node[node].under_temp |= (1u<<cell);
+                }else{
+                    bad_node[node].over_temp |= (1u<<cell);
+                }
+            }
+        }
+    }
 
+    // update pack of cell voltage error
+    for (node = 0; stack < N_OF_NODE; node++){
+        if (bat_pack.nodes[node].over_temp != 0){
+            bat_pack.status |= PACK_TEMP_OVER;
+            bat_err_add(PACK_TEMP_OVER, bat_node[node].over_temp, node);
+        }
 
-				temp_found = 0;
-				//check faulty temp
-				if (mypack.temp[stack][cell].bad_counter > ERROR_TEMPERATURE_LIMIT)
-				{
-					//check if there is the thermistor on the list
-					/*
-					for (i = 0; i < mypack.bad_temp_index; i++)
-						if ((mypack.bad_temp[i].stack == stack) &&
-							(mypack.bad_temp[i].cell == cell))
-						{
-							temp_found = 1;
-						}
-					*/
-
-					if(!mypack.bad_temp[stack][cell])
-					{
-						//mypack.bad_temp[mypack.bad_temp_index].stack=stack;
-						//mypack.bad_temp[mypack.bad_temp_index].cell=cell;
-						mypack.bad_temp[stack][cell] = 1;
-
-						if (mypack.bad_temp_index<255)
-							mypack.bad_temp_index++;
-					} // if not found temp
-
-
-					if (mypack.bad_temp_index > BAD_THERM_LIMIT)
-					{
-						mypack.status = FAULT;
-						fatal_err |= PACK_TEMP_OVER;
-					} // if temp index really bad
-
-				} // if faulty temp
-			} // for cells
-		} // for stack
+        if (bat_pack.nodes[node].under_voltage != 0){
+            bat_pack.status  |= PACK_TEMP_UNDER;
+            bat_err_add(PACK_TEMP_UNDER, bat_node[node].under_temp, node);
+        }
+    }
 }
 
 
@@ -420,19 +418,67 @@ void update_temp(uint16_t aux_codes[TOTAL_IC][6]){
 void mypack_init(){
     uint8_t stack=0;
     uint8_t cell=0;
-	mypack.status = NORMAL;
-	mypack.bad_cell_index =0;
-	mypack.bad_temp_index =0;
-	mypack.fuse_fault=0;
-	mypack.voltage =0;
+    uint8_t node=0;
+	// mypack.status = NORMAL;
+	// mypack.bad_cell_index =0;
+	// mypack.bad_temp_index =0;
+	// mypack.fuse_fault=0;
+	// mypack.voltage =0;
 
-	//memset(mypack.bad_temp, 0, sizeof(mypack.temp));
-    for (stack=0;stack<3;stack++){
-        for (cell=0;cell<20;cell++){
-            mypack.bad_temp[stack][cell]=0;
+	// //memset(mypack.bad_temp, 0, sizeof(mypack.temp));
+ //    for (stack=0;stack<3;stack++){
+ //        for (cell=0;cell<20;cell++){
+ //            mypack.bad_temp[stack][cell]=0;
+ //        }
+ //    }
+
+    // FE3 new data structure
+    // initialize cells and temps
+    for (cell = 0; cell<N_OF_CELL;cell++){
+        bat_cell[cell].voltage = 0;
+        bat_cell[cell].bad_volt_counter = 0;
+    }
+    for (temp = 0; temp < N_OF_TEMP ; temp++){
+        bat_temp[temp].temp = 0;
+        bat_temp[temp].bad_temp_counter = 0;
+        bat_temp[temp].bad_type = 0;
+        if ((temp%10) < 5){
+            bat_temp[temp].type = THERM_BOARD;
+        }
+        else{
+            bat_temp[temp].type = THERM_CELL;
         }
     }
-    
+
+    // register node
+    for (node = 0; node < N_OF_NODE; node++){
+        for (cell = 0; cell < 14; cell++){    
+            bat_node[node].cells[cell] = &(bat_cell[node*14+cell]);
+        }
+        for (temp = 0; temp < 10; temp++){
+            bat_node[node].temps[temp] = &(bat_temp[node*10+temp]);
+        }
+        bat_node.over_temp = 0;
+        bat_node.under_temp = 0;
+        bat_node.over_voltage = 0;
+        bat_node.under_voltage = 0;
+    }
+    // register stack
+    for (stack = 0;stack < N_OF_STACK; stack++){
+        bat_stack[stack].nodes[0] = &(bat_stack[stack*2]);
+        bat_stack[stack].nodes[1] = &(bat_stack[stack*2+1]);
+        bat_stack[stack].voltage = 0;
+    }
+    // register pac
+    for (stack = 0; stack< 3; stack++){
+        bat_pack.stacks[stack] = &(bat_stack[stack]);
+    }
+    for (node = 0; node<6; node++){
+        bat_pack.nodes[node] = &(bat_node[node]);
+    }
+    bat_pack.voltage = 0;
+    bat_pack.current = 0;
+    bat_pack.status = 0; 
     
     
 }
@@ -446,9 +492,9 @@ void check_stack_fuse()
 	int delta_0_1, delta_1_2, delta_2_0;
 
 	// compute delta
-	delta_0_1 = (int)mypack.stack[0].value32 - (int)mypack.stack[1].value32;
-	delta_1_2 = (int)mypack.stack[1].value32 - (int)mypack.stack[2].value32;
-	delta_2_0 = (int)mypack.stack[2].value32 - (int)mypack.stack[0].value32;
+	delta_0_1 = (int)bat_stack[0].voltage - (int)bat_stack[1].voltage;
+	delta_1_2 = (int)bat_stack[1].voltage - (int)bat_stack[2].voltage;
+	delta_2_0 = (int)bat_stack[2].voltage - (int)bat_stack[0].voltage;
 
 	// absolute value of delta
 	if(delta_0_1 < 0) delta_0_1 *= -1;
@@ -457,92 +503,48 @@ void check_stack_fuse()
 
 	// Comparisons to stack limits
 	if(delta_0_1 > STACK_VOLT_DIFF_LIMIT)
-		mypack.stack[0].bad_counter++;
+		bat_stack[0].bad_counter++;
 	else
 		if(mypack.stack[0].bad_counter > 0)
-			mypack.stack[0].bad_counter--;
+			bat_stack[0].bad_counter--;
 
 	if(delta_1_2 > STACK_VOLT_DIFF_LIMIT)
-		mypack.stack[1].bad_counter++;
+		bat_stack[1].bad_counter++;
 	else
-		if(mypack.stack[1].bad_counter > 0)
-			mypack.stack[1].bad_counter--;
+		if(bat_stack[1].bad_counter > 0)
+			bat_stack[1].bad_counter--;
 
 	if(delta_2_0 > STACK_VOLT_DIFF_LIMIT)
-		mypack.stack[2].bad_counter++;
+		bat_stack[2].bad_counter++;
 	else
-		if(mypack.stack[2].bad_counter > 0)
-			mypack.stack[2].bad_counter--;
+		if(bat_stack[2].bad_counter > 0)
+			bat_stack[2].bad_counter--;
 
-
-/*
-	if (((mypack.stack[0].value32 > mypack.stack[1].value32) && \
-				((mypack.stack[0].value32 - mypack.stack[1].value32) > STACK_VOLT_DIFF_LIMIT)) && \
-			(mypack.stack[0].value32 > mypack.stack[2].value32) && \
-			((mypack.stack[0].value32 - mypack.stack[2].value32) > STACK_VOLT_DIFF_LIMIT)){
-		mypack.stack[0].bad_counter++;
-	}else if(mypack.stack[0].bad_counter>0){
-		mypack.stack[0].bad_counter--;
-	}
-
-	if (((mypack.stack[1].value32 > mypack.stack[0].value32) && \
-				((mypack.stack[1].value32 - mypack.stack[0].value32) > STACK_VOLT_DIFF_LIMIT)) && \
-			(mypack.stack[1].value32 > mypack.stack[2].value32) && \
-			((mypack.stack[1].value32 - mypack.stack[2].value32) > STACK_VOLT_DIFF_LIMIT)){
-		mypack.stack[1].bad_counter++;
-	}else if(mypack.stack[1].bad_counter>0){
-		mypack.stack[1].bad_counter--;
-	}
-
-	if (((mypack.stack[2].value32 > mypack.stack[0].value32) && \
-				((mypack.stack[2].value32 - mypack.stack[0].value32) > STACK_VOLT_DIFF_LIMIT)) && \
-			(mypack.stack[2].value32 > mypack.stack[1].value32) && \
-			((mypack.stack[2].value32 - mypack.stack[1].value32) > STACK_VOLT_DIFF_LIMIT)){
-		mypack.stack[2].bad_counter++;
-	}else if(mypack.stack[2].bad_counter>0){
-		mypack.stack[2].bad_counter--;
-	}
-	*/
 
 	stack=0;
 	for (stack =0;stack<3;stack++){
-		if (mypack.stack[stack].bad_counter>FUSE_BAD_LIMIT){
-			mypack.status = FAULT;
+		if (bat_stack[stack].bad_counter>FUSE_BAD_LIMIT){
+			bat_pack.status |= STACK_FUSE_BROKEN;
 			fatal_err |= STACK_FUSE_BROKEN;
 
-		if(mypack.stack[0].bad_counter > FUSE_BAD_LIMIT &&
-			mypack.stack[1].bad_counter > FUSE_BAD_LIMIT)
+		if(bat_stack[0].bad_counter > FUSE_BAD_LIMIT &&
+			bat_stack[1].bad_counter > FUSE_BAD_LIMIT)
 		{
-			mypack.fuse_fault = 1;
+			bat_pack.fuse_fault = 1;
 		} // if fuse on stack 1 fails
 
-		if(mypack.stack[1].bad_counter > FUSE_BAD_LIMIT &&
-			mypack.stack[2].bad_counter > FUSE_BAD_LIMIT)
+		if(bat_stack[1].bad_counter > FUSE_BAD_LIMIT &&
+			bat_stack[2].bad_counter > FUSE_BAD_LIMIT)
 		{
-			mypack.fuse_fault = 2;
+			bat_pack.fuse_fault = 2;
 		} // if fuse on stack 2 fails
 
-		if(mypack.stack[2].bad_counter > FUSE_BAD_LIMIT &&
-			mypack.stack[0].bad_counter > FUSE_BAD_LIMIT)
+		if(bat_stack[2].bad_counter > FUSE_BAD_LIMIT &&
+			bat_stack[0].bad_counter > FUSE_BAD_LIMIT)
 		{
-			mypack.fuse_fault = 0;
+			bat_pack.fuse_fault = 0;
 		} // if fuse on stack 0 fails
 
-
-/*
-			switch(stack){
-				case 0:
-					mypack.fuse_fault=STACK0;
-					break;
-				case 1:
-					mypack.fuse_fault=STACK1;
-					break;
-				case 2:
-					mypack.fuse_fault=STACK2;
-					break;
-			}
-*/
-			can_send_volt(); 
 		}  
 	}
 }

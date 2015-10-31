@@ -20,6 +20,7 @@
 #include <CyLib.h>
 #include <poll.h>
 
+
 #if !defined(poll__REMOVED) /* Check for removal by optimization */
 
 /*******************************************************************************
@@ -158,6 +159,10 @@ void poll_Stop(void)
 *******************************************************************************/
 CY_ISR(poll_Interrupt)
 {
+    #ifdef poll_INTERRUPT_INTERRUPT_CALLBACK
+        poll_Interrupt_InterruptCallback();
+    #endif /* poll_INTERRUPT_INTERRUPT_CALLBACK */ 
+
     /*  Place your Interrupt code here. */
     /* `#START poll_Interrupt` */
 
