@@ -134,6 +134,11 @@ typedef struct
 
 //new data stucture
 
+typedef struct
+{
+
+}BAT_ERR_t;
+
 typedef struct 
 {
   uint16_t voltage;
@@ -173,7 +178,6 @@ typedef struct
   uint32_t voltage;
   uint16_t current;
   uint8_t fuse_fault;
-  uint8_t bad_counter;
   uint8_t status;
 }BAT_PACK_t;
 
@@ -280,7 +284,7 @@ void update_temp(uint16_t aux_codes[TOTAL_IC][6]);
  * @param no input param
  * @return NULL.
  */
-void check_volt();
+void check_temp();
 
 
 /**
@@ -313,7 +317,7 @@ void check_stack_fuse();
  * @param no input parameters. (use global mypack)
  * @return NULL.
  */
-void bat_err_add(uint8_t, uint8_t, uint8_t);
+void bat_err_add(uint32_t, uint8_t, uint8_t);
 
 uint8_t temp_transfer(uint16_t);
 
