@@ -4,44 +4,9 @@
 */
 
 /************************************
-REVISION HISTORY
-$Revision: 1000 $
-$Date: 2013-07-15 
 
-Copyright (c) 2013, Linear Technology Corp.(LTC)
-All rights reserved.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
 
-1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-The views and conclusions contained in the software and documentation are those
-of the authors and should not be interpreted as representing official policies,
-either expressed or implied, of Linear Technology Corp.
-
-The Linear Technology Linduino is not affiliated with the official Arduino team.
-However, the Linduino is only possible because of the Arduino team's commitment
-to the open-source community.  Please, visit http://www.arduino.cc and
-http://store.arduino.cc , and consider a purchase that will help fund their
-ongoing work.
-
-Copyright 2013 Linear Technology Corp. (LTC)
 ***********************************************************/
 
 
@@ -65,6 +30,12 @@ Copyright 2013 Linear Technology Corp. (LTC)
     #define CRITICAL_TEMP_L (2000u)          //0.2V
     #define CRITICAL_TEMP_H (10213u)             //1.0213V  10213
     #define BAD_THERM_LIMIT (8u)
+    #define SOC_CALI_HIGH (110000u)     //High cali point at 110V
+    #define SOC_SOC_HIGH  (60000u)      //manually set it in mAh
+    #define SOC_CALI_LOW (80000u)     //Low Cali point at 80V
+    #define SOC_SOC_LOW   (10000u)      //manually set it in mAh
+    #define SOC_FULL_CAP (75000u)     //let's say, 75,000mAh
+    #define SOC_FULL      (115000u)   //when voltage reaches 115V, consider it full
     
     #define N_OF_CELL (84u)
     #define N_OF_TEMP (60u)
@@ -80,62 +51,41 @@ Copyright 2013 Linear Technology Corp. (LTC)
     #define THERM_BOARD (0u)
 
 
+    // bms_status
+    #define NO_ERROR 0x0000
+    #define CHARGEMODE 0x0001
+    #define PACK_TEMP_OVER 0x0002
+    #define STACK_FUSE_BROKEN 0x0004
+    #define PACK_TEMP_UNDER 0x0008
+    #define LOW_SOC   0x0010
+    #define CRITICAL_SOC   0x0020
+    #define IMBALANCE   0x0040
+    #define COM_FAILURE   0x0080
+    #define NEG_CONT_CLOSED   0x0100
+    #define POS_CONT_CLOSED   0x0200
+    #define ISO_FAULT   0x0400
+    #define CELL_VOLT_OVER   0x0800
+    #define CELL_VOLT_UNDER   0x1000
+    #define CHARGE_HAULT   0x2000
+    #define FULL   0x4000
+    #define PRECHARGE_CLOSED   0x8000
+
+  
+
+//new data stucture
 
 typedef enum {
   NORMAL =0,
   WARNING =1,
   FAULT =2,
-}BMS_HEALTH;
+}BAT_HEALTH;
 
-
-typedef struct {
-  uint16_t value16;
-  uint32_t value32;
-  uint8_t bad;
-  uint8_t bad_counter;
-  uint16_t vcc;
-}BAT_VOLT;
-
-typedef struct {
-  uint16_t value16;
-  uint8_t bad;
-  uint8_t bad_counter;
-}BAT_TEMP;
-
-
-typedef struct{
-  uint8_t stack;
-  uint8_t ic;
-  uint8_t cell;
-  uint8_t error;
-  uint16_t value16;
-}BAT_ERROR;
-
-typedef struct 
-{
-  BMS_HEALTH status;
-  uint8_t bad_cell_index;
-  uint8_t bad_temp_index;
-  BAT_ERROR bad_cell[255];
-
-  //BAT_ERROR bad_temp[255];
-	uint8_t bad_temp[3][20];
-
-
-
-  BAT_VOLT cell[3][4][7];
-  BAT_TEMP temp[3][20];
-  BAT_VOLT stack[3];
-  BAT_VOLT pack;
-  uint8_t fuse_fault;
-  uint32_t voltage;
-  int16_t current;
-}BATTERYPACK;
-
-//new data stucture
 
 typedef struct
 {
+  uint16_t err;
+  uint8_t bad_cell;
+  uint8_t bad_node;
 
 }BAT_ERR_t;
 
@@ -178,10 +128,17 @@ typedef struct
   uint32_t voltage;
   uint16_t current;
   uint8_t fuse_fault;
-  uint8_t status;
+  uint16_t status;
+  BAT_HEALTH health;
+  uint32_t current_charge;
+  uint8_t SOC_cali_flag;
 }BAT_PACK_t;
 
-
+typedef struct 
+{
+  uint8_t percent_SOC;
+  uint32_t absolute_SOC;
+}BAT_SOC_t;
 
 
 
@@ -317,10 +274,26 @@ void check_stack_fuse();
  * @param no input parameters. (use global mypack)
  * @return NULL.
  */
-void bat_err_add(uint32_t, uint8_t, uint8_t);
+void bat_err_add(uint16_t, uint8_t, uint8_t);
 
 uint8_t temp_transfer(uint16_t);
 
 void voltage_compensation();
+
+/**
+ * @once other function requested the soc, it returned
+ *
+ * @param no input parameters. (use global mypack)
+ * @return NULL.
+ */
+BAT_SOC_t get_soc();
+
+/**
+ * @update soc in short time period
+ *
+ * @param no input parameters. (use global mypack)
+ * @return NULL.
+ */
+void update_soc();
 
 #endif // CELL_INTERFACE_H

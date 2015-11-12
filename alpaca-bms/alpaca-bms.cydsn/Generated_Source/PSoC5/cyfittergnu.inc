@@ -206,16 +206,6 @@
 .set Tx_1__SHIFT, 2
 .set Tx_1__SLW, CYREG_PRT15_SLW
 
-/* poll */
-.set poll__INTC_CLR_EN_REG, CYREG_NVIC_CLRENA0
-.set poll__INTC_CLR_PD_REG, CYREG_NVIC_CLRPEND0
-.set poll__INTC_MASK, 0x80
-.set poll__INTC_NUMBER, 7
-.set poll__INTC_PRIOR_NUM, 7
-.set poll__INTC_PRIOR_REG, CYREG_NVIC_PRI_7
-.set poll__INTC_SET_EN_REG, CYREG_NVIC_SETENA0
-.set poll__INTC_SET_PD_REG, CYREG_NVIC_SETPEND0
-
 /* CAN_1_CanIP */
 .set CAN_1_CanIP__CSR_BUF_SR, CYREG_CAN0_CSR_BUF_SR
 .set CAN_1_CanIP__CSR_CFG, CYREG_CAN0_CSR_CFG
@@ -472,15 +462,15 @@
 .set LTC68_BSPIM_TxStsReg__STATUS_REG, CYREG_B0_UDB01_ST
 
 /* LTC68_IntClock */
-.set LTC68_IntClock__CFG0, CYREG_CLKDIST_DCFG2_CFG0
-.set LTC68_IntClock__CFG1, CYREG_CLKDIST_DCFG2_CFG1
-.set LTC68_IntClock__CFG2, CYREG_CLKDIST_DCFG2_CFG2
+.set LTC68_IntClock__CFG0, CYREG_CLKDIST_DCFG1_CFG0
+.set LTC68_IntClock__CFG1, CYREG_CLKDIST_DCFG1_CFG1
+.set LTC68_IntClock__CFG2, CYREG_CLKDIST_DCFG1_CFG2
 .set LTC68_IntClock__CFG2_SRC_SEL_MASK, 0x07
-.set LTC68_IntClock__INDEX, 0x02
+.set LTC68_IntClock__INDEX, 0x01
 .set LTC68_IntClock__PM_ACT_CFG, CYREG_PM_ACT_CFG2
-.set LTC68_IntClock__PM_ACT_MSK, 0x04
+.set LTC68_IntClock__PM_ACT_MSK, 0x02
 .set LTC68_IntClock__PM_STBY_CFG, CYREG_PM_STBY_CFG2
-.set LTC68_IntClock__PM_STBY_MSK, 0x04
+.set LTC68_IntClock__PM_STBY_MSK, 0x02
 
 /* LTC68_RxInternalInterrupt */
 .set LTC68_RxInternalInterrupt__INTC_CLR_EN_REG, CYREG_NVIC_CLRENA0
@@ -873,6 +863,16 @@
 .set current_timer_TimerHW__RT1, CYREG_TMR2_RT1
 .set current_timer_TimerHW__SR0, CYREG_TMR2_SR0
 
+/* current_update_ISR */
+.set current_update_ISR__INTC_CLR_EN_REG, CYREG_NVIC_CLRENA0
+.set current_update_ISR__INTC_CLR_PD_REG, CYREG_NVIC_CLRPEND0
+.set current_update_ISR__INTC_MASK, 0x80
+.set current_update_ISR__INTC_NUMBER, 7
+.set current_update_ISR__INTC_PRIOR_NUM, 7
+.set current_update_ISR__INTC_PRIOR_REG, CYREG_NVIC_PRI_7
+.set current_update_ISR__INTC_SET_EN_REG, CYREG_NVIC_SETENA0
+.set current_update_ISR__INTC_SET_PD_REG, CYREG_NVIC_SETPEND0
+
 /* WDT_timer_clock */
 .set WDT_timer_clock__CFG0, CYREG_CLKDIST_DCFG3_CFG0
 .set WDT_timer_clock__CFG1, CYREG_CLKDIST_DCFG3_CFG1
@@ -1012,15 +1012,15 @@
 .set ADC_current_theACLK__PM_STBY_MSK, 0x01
 
 /* timer_clock */
-.set timer_clock__CFG0, CYREG_CLKDIST_DCFG1_CFG0
-.set timer_clock__CFG1, CYREG_CLKDIST_DCFG1_CFG1
-.set timer_clock__CFG2, CYREG_CLKDIST_DCFG1_CFG2
+.set timer_clock__CFG0, CYREG_CLKDIST_DCFG2_CFG0
+.set timer_clock__CFG1, CYREG_CLKDIST_DCFG2_CFG1
+.set timer_clock__CFG2, CYREG_CLKDIST_DCFG2_CFG2
 .set timer_clock__CFG2_SRC_SEL_MASK, 0x07
-.set timer_clock__INDEX, 0x01
+.set timer_clock__INDEX, 0x02
 .set timer_clock__PM_ACT_CFG, CYREG_PM_ACT_CFG2
-.set timer_clock__PM_ACT_MSK, 0x02
+.set timer_clock__PM_ACT_MSK, 0x04
 .set timer_clock__PM_STBY_CFG, CYREG_PM_STBY_CFG2
-.set timer_clock__PM_STBY_MSK, 0x02
+.set timer_clock__PM_STBY_MSK, 0x04
 
 /* timer_clock_1 */
 .set timer_clock_1__CFG0, CYREG_CLKDIST_DCFG4_CFG0

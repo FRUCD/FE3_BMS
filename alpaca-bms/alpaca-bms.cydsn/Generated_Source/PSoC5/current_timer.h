@@ -168,7 +168,7 @@ void current_timer_Wakeup(void)        ;
 *    Initialial Parameter Constants
 ***************************************/
 
-#define current_timer_INIT_PERIOD             65535u
+#define current_timer_INIT_PERIOD             99u
 #define current_timer_INIT_CAPTURE_MODE       ((uint8)((uint8)1u << current_timer_CTRL_CAP_MODE_SHIFT))
 #define current_timer_INIT_TRIGGER_MODE       ((uint8)((uint8)0u << current_timer_CTRL_TRIG_MODE_SHIFT))
 #if (current_timer_UsingFixedFunction)

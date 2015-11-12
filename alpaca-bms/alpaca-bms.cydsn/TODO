@@ -8,3 +8,9 @@ Need to find way to estimate the SOC. One possible solution is when car is runni
 
 
 Wait...what is voltage compensation?
+
+
+Oct.30
+needs to finish bat_err_stack
+needs to update can msg methods
+needs to test connectivity

@@ -9,13 +9,27 @@
 #include "uart-terminal.h"
 #include "BMS_monitor.h"
 
+typedef enum 
+{
+	BMS_BOOTUP,
+	BMS_NORMAL,
+	BMS_CHARGEMODE,
+	BMS_RACINGMODE,
+	BMS_DEBUGMODE,
+	BMS_SLEEPMODE,
+	BMS_FAULT
+}BMS_MODE;
+
+
 volatile uint8_t CAN_UPDATE_FLAG=0;
-volatile BMS_STATUS warning_event;
-volatile BMS_STATUS fatal_err;
-volatile uint8_t error_IC;
-volatile uint8_t error_CHIP;
-extern volatile BATTERYPACK mypack;
+extern volatile BAT_PACK_t bat_pack;
+extern volatile BAT_ERR_t* bat_err_array;
+extern volatile uint8_t bat_err_index;
+extern volatile uint8_t bat_err_index_loop;
 volatile uint8_t CAN_DEBUG=0;
+volatile uint8_t RACING_FLAG=0;    // this flag should be set in CAN handler
+BAT_SOC_t bat_soc;
+
 
 
 
@@ -24,177 +38,175 @@ CY_ISR(CAN_UPDATE_Handler){
     CAN_UPDATE_FLAG = 1;
 }
 
-
-void process_event(){
-    if (warning_event | CHARGEMODE){
-    	can_send_status(0x00,
-					0x00,
-					CHARGEMODE,
-					0x00,0x00,0x000);
-    }
+CY_ISR(current_update_Handler){
+    current_Timer_STATUS;
+	update_soc();
+	return;
 }
 
 
+void process_event(){
+    // heartbeat
+    can_send_status(bat_soc.percent_SOC,
+    	0,
+    	bat_pack.status,
+    	0,0,0);
+}
+
+void process_failure_helper(BAT_ERR_t err){
+	switch(err.err){
+		case CELL_VOLT_OVER:
+		case CELL_VOLT_UNDER:
+			can_send_volt(err.bad_cell,
+				err.bad_node,
+				bat_pack.nodes[err.bad_node]->cells[err.bad_cell]->voltage,
+				bat_pack.voltage);
+			break;
+		
+		case PACK_TEMP_OVER:
+		case PACK_TEMP_UNDER:
+			// waiting for CAN mesg been defined clearly
+			break;
+
+	}
+	return;
+}
+
+void process_failure(){
+	uint8_t i=0;
+	// broadcast error in inverse chrognxxxical order
+	if (bat_err_index_loop){
+		// start from bat_err_index back to 0
+		for (i=bat_err_index;i>=0;i--){
+			process_failure_helper(bat_err_array[i]);
+		}
+		// start from index=99 to bat_err_index+1
+		for (i=99;i>bat_err_index;i--){
+			process_failure_helper(bat_err_array[i]);
+		}
+	}else{
+		// start from bat_err_index back to 0
+		for (i=bat_err_index;i>=0;i--){
+			process_failure_helper(bat_err_array[i]);
+		}
+	}
+}
+
 int main(void)
 {
+	// Initialize state machine
+	BMS_MODE bms_status = BMS_BOOTUP;
+	uint32_t system_interval = 100;
 
-	Can_Update_ISR_StartEx(CAN_UPDATE_Handler);
-	Can_Update_Timer_Start();
-	can_init();
-	
+	while(1){
+		switch (bms_status){
+			case BMS_BOOTUP:
+				Can_Update_ISR_StartEx(CAN_UPDATE_Handler);
+                current_update_ISR_StartEx(current_update_Handler);
+				Can_Update_Timer_Start();
+                current_Timer_Start();
+				can_init();
+				
+				// TODO Watchdog Timer
+			    CyWdtStart(CYWDT_1024_TICKS,CYWDT_LPMODE_NOCHANGE);
 
-	// TODO Watchdog Timer
-    CyWdtStart(CYWDT_1024_TICKS,CYWDT_LPMODE_NOCHANGE);
+				// Initialize
+				bms_init();
+				mypack_init();
+				current_init();
+			    //monitor_init();
+			    
+			    //enable global interrupt
+			    CyGlobalIntEnable;
+		    
+			    //some variables and states
+			    OK_SIG_Write(1);
+		       //terminal_run();
+				break;
 
-    OK_SIG_Write(1);
-	// Initialize
-	bms_init();
-	mypack_init();
-    //monitor_init();
-	current_init();
-    
-    //enable global interrupt
-    CyGlobalIntEnable;
+			case BMS_NORMAL:
+			    OK_SIG_Write(1);
+			    //check_cfg();  //CANNOT be finished, because 
+				//check_cells();// TODO This function will be finished in get_cell_volt/check stack fuse
+		        get_cell_volt();// TODO Get voltage
+				check_stack_fuse(); // TODO: check if stacks are disconnected
+				get_cell_temp();// TODO Get temperature
+				get_current(); // TODO get current reading from sensor
+				bat_soc = get_soc(); // TODO calculate SOC()
+				// because it is normal mode, just set a median length current reading interval
+				set_current_interval(100);
+				system_interval = 1000;
 
-	//int pin_value=1;
-
-
-	// Initialize err event
-	fatal_err = NO_ERROR;
-	warning_event = NO_ERROR;
-
-    
-    //some variables
-    uint8_t stack, cell;
-    
-	for(;;) // main loop
-	{   
-        //terminal_run();
-        OK_SIG_Write(1);
-		CyWdtClear();
-        
-        
-		//check_cfg();  //CANNOT be finished, because 
-		//check_cells();// TODO This function will be finished in get_cell_volt/check stack fuse
-        get_cell_volt();// TODO Get voltage
-		check_stack_fuse(); // TODO: check if stacks are disconnected
-		get_cell_temp();// TODO Get temperature
-		get_current(); // TODO get current reading from sensor
-		//get_soc(); // TODO calculate SOC()
-        
-        //voltage compensate
-        
-
-		if (fatal_err)
-    		break; // break from main loop and enter fault loop
-
-		if (warning_event){
-            process_event();
-        }
-		else{
-			can_send_status(0x00,
-					0x00,
-					NO_ERROR,
-					0x00,
-					0x00,
-                    0x0000);
-		} // else send no error
-
-		
-        if(CAN_UPDATE_FLAG){
-            can_send_volt();	//this is heartbeat
-            can_send_temp();
-            can_send_current();
-            CAN_UPDATE_FLAG=0;
-        }
-		CyDelay(100); // wait for next cycle. System working in 10Hz
-	} // main loop
-
-
-    
-	for(;;){
-		CyWdtClear();
-        OK_SIG_Write(0);
-		uint8_t index=0;
-		if (fatal_err & PACK_TEMP_OVER){        //0x0002
-			
-			for (stack=0;stack<3;index++){
-                for (cell=0;cell<20;cell++){
-				    if (mypack.bad_temp[stack][cell]==1){
-					    can_send_status(stack,
-					    cell,
-					    PACK_TEMP_OVER,
-					    stack,
-					    cell,
-					    mypack.temp[stack][cell].value16);
-				    }
-                CyDelay(1);
-                }
-            }
-		}
-
-		if (fatal_err & PACK_TEMP_UNDER){       //0x0008
-			
-			for (stack=0;stack<3;index++){
-                for (cell=0;cell<20;cell++){
-				    if (mypack.bad_temp[stack][cell]==1){
-					    can_send_status(0xff & index,
-					    0x00,
-					    PACK_TEMP_UNDER,
-					    stack,
-					    cell,
-					    mypack.temp[stack][cell].value16);
-				    }
-                CyDelay(1);
-                }
-			}
-			
-
-		}
-
-		if (fatal_err & STACK_FUSE_BROKEN){         //0x0004
-			can_send_status(0x00,
-			0x00,
-			STACK_FUSE_BROKEN,
-			mypack.fuse_fault,
-			0x00,
-			0x0000);            
-		}
-
-
-		if(fatal_err & CELL_VOLT_OVER){         //0x0800
-			for (index=0;index<mypack.bad_cell_index;index++){
-				if (mypack.bad_cell[index].error==1){
-					can_send_status(0xff & index,
-					0x00,
-					CELL_VOLT_OVER,
-					mypack.bad_cell[index].stack,
-					mypack.bad_cell[index].ic*4+mypack.bad_cell[index].cell,
-					mypack.bad_cell[index].value16);
+				if (bat_pack.health == FAULT){
+					bms_status = BMS_FAULT;
 				}
-                CyDelay(1);
-			}
-            
-
-		}
-		if(fatal_err & CELL_VOLT_UNDER){                //0x1000
-			for (index=0;index<mypack.bad_cell_index;index++){
-				if (mypack.bad_cell[index].error==0){
-					can_send_status(0xff & index,
-					0x00,
-					CELL_VOLT_UNDER,
-					mypack.bad_cell[index].stack,
-					mypack.bad_cell[index].ic*4+mypack.bad_cell[index].cell,
-					mypack.bad_cell[index].value16);
+				if (bat_pack.status || CHARGEMODE){
+					bms_status = BMS_CHARGEMODE;
+				}else if(RACING_FLAG){
+					bms_status = BMS_RACINGMODE;
 				}
-                CyDelay(1);
-			}
+				break;
+
+			case BMS_CHARGEMODE:
+				OK_SIG_Write(1);
+
+				//check_cfg();  //CANNOT be finished, because 
+				//check_cells();// TODO This function will be finished in get_cell_volt/check stack fuse
+		        get_cell_volt();// TODO Get voltage
+				check_stack_fuse(); // TODO: check if stacks are disconnected
+				get_cell_temp();// TODO Get temperature
+				get_current(); // TODO get current reading from sensor
+				bat_soc = get_soc(); // TODO calculate SOC()
+				// because it is normal mode, just set a median length current reading interval
+				set_current_interval(100);
+				system_interval = 5000;
+
+
+
+				if (!(bat_pack.status || CHARGEMODE)){
+					bms_status = CHARGEMODE;
+				}
+				break;
+
+			case BMS_RACINGMODE:
+				OK_SIG_Write(1);
+
+				//check_cfg();  //CANNOT be finished, because 
+				//check_cells();// TODO This function will be finished in get_cell_volt/check stack fuse
+		        get_cell_volt();// TODO Get voltage
+				check_stack_fuse(); // TODO: check if stacks are disconnected
+				get_cell_temp();// TODO Get temperature
+				get_current(); // TODO get current reading from sensor
+				bat_soc = get_soc(); // TODO calculate SOC()
+
+				system_interval = 200;
+				set_current_interval(1);
+
+				if (bat_pack.health == FAULT){
+					bms_status = BMS_FAULT;
+				}
+				if (!RACING_FLAG){
+					bms_status = BMS_NORMAL;
+				}
+				break;
+
+			case BMS_SLEEPMODE:
+				OK_SIG_Write(1);
+				break;
+
+			case BMS_FAULT:
+				OK_SIG_Write(0u);
+				// send
+
+				bms_status = BMS_FAULT;
+				system_interval = 100;
+				process_failure();
+			default:
+				bms_status = BMS_FAULT;
+
 		}
-
-
-		CyDelay(500);
-	}//fault loop
-    
-    
-	return 0;
+		CyWdtClear();
+		process_event();
+		CyDelay(system_interval);
+	}
 } // main()

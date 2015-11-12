@@ -1,19 +1,24 @@
 #include "current_sense.h"
 #include "cell_interface.h"
 #include "math.h"
-extern volatile BATTERYPACK mypack;
-extern volatile BMS_STATUS warning_event;
-extern volatile BMS_STATUS fatal_err;
+
+extern BAT_PACK_t bat_pack;
+
 
 void current_init(void)
 {
 	ADC_current_Start();
+	// set_current_interval();
 } // current_init()
 
 
+void set_current_interval(uint16_t interval){
+	// set current interval
+    current_timer_WritePeriod(interval);
+	return;
+}
 
-
-uint16_t get_current(void)
+int16_t get_current(void)
 {
 	//uint16_t raw_vol = 0;
 	//float current=0;
@@ -36,18 +41,15 @@ uint16_t get_current(void)
 	current = (current - 2500)/4;
 
 	//mypack.current = (int16_t)floor(current);
-	mypack.current = (int16_t)current; 
+	bat_pack.current = (int16_t)current; 
 
-	//charging?
-	if (current<0){
-		warning_event |= CHARGEMODE;
+	if(bat_pack.current<0){
+		bat_pack.status |= CHARGEMODE;
+	}else{
+		bat_pack.status -= CHARGEMODE;
 	}
-	return current;
+
+	return (int16_t)current;
 }// get_current()
 
 
-
-uint16_t get_soc()
-{
-	return 0;
-} // get_soc()

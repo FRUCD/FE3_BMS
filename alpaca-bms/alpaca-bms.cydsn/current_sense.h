@@ -5,7 +5,9 @@
 #include <stdint.h>
 
 void current_init(void);
-uint16_t get_current(void);
-uint16_t get_soc(void);
+void set_current_interval(uint16_t interval);
+int16_t get_current(void);
+
+
 
 #endif

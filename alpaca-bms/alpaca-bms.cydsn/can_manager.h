@@ -29,7 +29,10 @@ typedef enum{
     
     
 void can_send_temp();
-void can_send_volt();
+void can_send_volt(uint8_t cell_index,
+    uint8_t cell_node,
+    uint16_t cell_voltage,
+    uint32_t pack_voltage);
 void can_send_current();
 void can_send_status(uint8_t SOC_P,
                     uint8_t AH,

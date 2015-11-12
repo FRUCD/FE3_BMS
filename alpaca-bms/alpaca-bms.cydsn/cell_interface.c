@@ -4,64 +4,20 @@
 */
 
 /************************************
-REVISION HISTORY
-$Revision: 1000 $
-$Date: 2013-07-15 
 
-Copyright (c) 2013, Linear Technology Corp.(LTC)
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-The views and conclusions contained in the software and documentation are those
-of the authors and should not be interpreted as representing official policies,
-either expressed or implied, of Linear Technology Corp.
-
-The Linear Technology Linduino is not affiliated with the official Arduino team.
-However, the Linduino is only possible because of the Arduino team's commitment
-to the open-source community.  Please, visit http://www.arduino.cc and
-http://store.arduino.cc , and consider a purchase that will help fund their
-ongoing work.
-
-Copyright 2013 Linear Technology Corp. (LTC)
 ***********************************************************/
 
 
 
 #include "cell_interface.h"
+#include "current_sense.h"
 #include "LTC68041.h"
 #include "math.h"
 
 #include <stdlib.h>
 
+uint8_t fatal_err;
 
-
-extern volatile uint8_t CAN_UPDATE_FLAG;
-extern volatile BMS_STATUS fatal_err;
-extern volatile BMS_STATUS warning_err;
-extern volatile uint8_t error_IC;
-extern volatile uint8_t error_CHIP;
-volatile uint8_t error_voltage_count=0;
-volatile uint8_t error_temperature_count=0;
-volatile BATTERYPACK mypack;
 // FE3 new structure
 BAT_CELL_t bat_cell[N_OF_CELL];
 BAT_TEMP_t bat_temp[N_OF_TEMP];
@@ -72,6 +28,11 @@ BAT_PACK_t bat_pack;
 
 extern volatile uint8_t CAN_DEBUG;
 volatile uint8_t bad_therm=0;
+volatile BAT_ERR_t bat_err_array[100];
+volatile uint8_t bat_err_index;
+volatile uint8_t bat_err_index_loop;
+uint32_t deltaTime;
+uint32_t lastTime;
 
 
 /**
@@ -87,6 +48,77 @@ void  bms_init(){
     LTC6804_initialize();
     LTC6804_wrcfg(TOTAL_IC,tx_cfg);
 }
+
+
+/**
+ * @initialize the mypack struct. 
+ *
+ * @param no input parameters.
+ * @return 1 if everything is OK. 0 for hard failure.
+ */
+void mypack_init(){
+    uint8_t stack=0;
+    uint8_t cell=0;
+    uint8_t node=0;
+    uint8_t temp=0;
+    bat_err_index = 0;
+    bat_err_index_loop = 0;
+
+    // FE3 new data structure
+    // initialize cells and temps
+    for (cell = 0; cell<N_OF_CELL;cell++){
+        bat_cell[cell].voltage = 0;
+        bat_cell[cell].bad_counter = 0;
+    }
+    for (temp = 0; temp < N_OF_TEMP ; temp++){
+        bat_temp[temp].temp = 0;
+        bat_temp[temp].bad_counter = 0;
+        bat_temp[temp].bad_type = 0;
+        if ((temp%10) < 5){
+            bat_temp[temp].type = THERM_BOARD;
+        }
+        else{
+            bat_temp[temp].type = THERM_CELL;
+        }
+    }
+
+    // register node
+    for (node = 0; node < N_OF_NODE; node++){
+        for (cell = 0; cell < 14; cell++){    
+            bat_node[node].cells[cell] = &(bat_cell[node*14+cell]);
+        }
+        for (temp = 0; temp < 10; temp++){
+            bat_node[node].temps[temp] = &(bat_temp[node*10+temp]);
+        }
+        bat_node[node].over_temp = 0;
+        bat_node[node].under_temp = 0;
+        bat_node[node].over_voltage = 0;
+        bat_node[node].under_voltage = 0;
+    }
+    // register stack
+    for (stack = 0;stack < N_OF_STACK; stack++){
+        bat_stack[stack].nodes[0] = &(bat_node[stack*2]);
+        bat_stack[stack].nodes[1] = &(bat_node[stack*2+1]);
+        bat_stack[stack].voltage = 0;
+    }
+    // register pac
+    for (stack = 0; stack< 3; stack++){
+        bat_pack.stacks[stack] = &(bat_stack[stack]);
+    }
+    for (node = 0; node<6; node++){
+        bat_pack.nodes[node] = &(bat_node[node]);
+    }
+    bat_pack.voltage = 0;
+    bat_pack.current = 0;
+    bat_pack.fuse_fault = 0;
+    bat_pack.status = 0; 
+    bat_pack.health = NORMAL;
+    bat_pack.SOC_cali_flag =0;
+    
+    
+}
+
+
 
 
 /**
@@ -146,9 +178,6 @@ uint8_t get_cell_volt(){
     //check error
     check_volt();
 
-    if (mypack.status!=NORMAL){
-            return 1;
-    }
     
     return 0;
 }// get_cell_volt()
@@ -176,13 +205,6 @@ uint8_t get_cell_temp(){
 
     //check error
     check_temp();
-    //check error
-    if (mypack.status!=NORMAL){
-        if (mypack.bad_temp_index>0){
-            return 1;
-        }
-    }
-
    
    
     #ifdef DEBUG_LCD
@@ -197,6 +219,7 @@ uint8_t get_cell_temp(){
 
 
 uint8_t check_cells(){ 
+    // not in use
     //using ADOW
   uint16_t cell_pu[TOTAL_IC][12];
   uint16_t cell_pd[TOTAL_IC][12];
@@ -409,66 +432,6 @@ void check_temp(){
 
 
 
-void mypack_init(){
-    uint8_t stack=0;
-    uint8_t cell=0;
-    uint8_t node=0;
-    uint8_t temp=0;
-
-    // FE3 new data structure
-    // initialize cells and temps
-    for (cell = 0; cell<N_OF_CELL;cell++){
-        bat_cell[cell].voltage = 0;
-        bat_cell[cell].bad_counter = 0;
-    }
-    for (temp = 0; temp < N_OF_TEMP ; temp++){
-        bat_temp[temp].temp = 0;
-        bat_temp[temp].bad_counter = 0;
-        bat_temp[temp].bad_type = 0;
-        if ((temp%10) < 5){
-            bat_temp[temp].type = THERM_BOARD;
-        }
-        else{
-            bat_temp[temp].type = THERM_CELL;
-        }
-    }
-
-    // register node
-    for (node = 0; node < N_OF_NODE; node++){
-        for (cell = 0; cell < 14; cell++){    
-            bat_node[node].cells[cell] = &(bat_cell[node*14+cell]);
-        }
-        for (temp = 0; temp < 10; temp++){
-            bat_node[node].temps[temp] = &(bat_temp[node*10+temp]);
-        }
-        bat_node[node].over_temp = 0;
-        bat_node[node].under_temp = 0;
-        bat_node[node].over_voltage = 0;
-        bat_node[node].under_voltage = 0;
-    }
-    // register stack
-    for (stack = 0;stack < N_OF_STACK; stack++){
-        bat_stack[stack].nodes[0] = &(bat_node[stack*2]);
-        bat_stack[stack].nodes[1] = &(bat_node[stack*2+1]);
-        bat_stack[stack].voltage = 0;
-    }
-    // register pac
-    for (stack = 0; stack< 3; stack++){
-        bat_pack.stacks[stack] = &(bat_stack[stack]);
-    }
-    for (node = 0; node<6; node++){
-        bat_pack.nodes[node] = &(bat_node[node]);
-    }
-    bat_pack.voltage = 0;
-    bat_pack.current = 0;
-    bat_pack.fuse_fault = 0;
-    bat_pack.status = 0; 
-    
-    
-}
-
-
-
 void check_stack_fuse()
 {
 	uint8_t stack=0;
@@ -486,19 +449,19 @@ void check_stack_fuse()
 	if(delta_2_0 < 0) delta_2_0 *= -1;
 
 	// Comparisons to stack limits
-	if(delta_0_1 > STACK_VOLT_DIFF_LIMIT)
+	if((unsigned int)delta_0_1 > STACK_VOLT_DIFF_LIMIT)
 		bat_stack[0].bad_counter++;
 	else
-		if(mypack.stack[0].bad_counter > 0)
+		if(bat_stack[0].bad_counter > 0)
 			bat_stack[0].bad_counter--;
 
-	if(delta_1_2 > STACK_VOLT_DIFF_LIMIT)
+	if((unsigned int)delta_1_2 > STACK_VOLT_DIFF_LIMIT)
 		bat_stack[1].bad_counter++;
 	else
 		if(bat_stack[1].bad_counter > 0)
 			bat_stack[1].bad_counter--;
 
-	if(delta_2_0 > STACK_VOLT_DIFF_LIMIT)
+	if((unsigned int)delta_2_0 > STACK_VOLT_DIFF_LIMIT)
 		bat_stack[2].bad_counter++;
 	else
 		if(bat_stack[2].bad_counter > 0)
@@ -534,7 +497,43 @@ void check_stack_fuse()
 }
 
 
-void bat_err_add(uint32_t err, uint8_t bad_cell, uint8_t bad_node){
+void bat_err_add(uint16_t err, uint8_t bad_cell, uint8_t bad_node){
+    bat_pack.health = FAULT;
+    uint8_t i=0;
+    // check array, dont duplicate
+    if (bat_err_index_loop){
+        for (i=0;i<100;i++){
+            if (err == bat_err_array[i].err
+             || bad_cell == bat_err_array[i].bad_cell
+             || bad_node == bat_err_array[i].bad_node){
+                return;
+            }
+        }
+    }else{
+        for (i=0;i<bat_err_index;i++){
+            if (err == bat_err_array[i].err
+             || bad_cell == bat_err_array[i].bad_cell
+             || bad_node == bat_err_array[i].bad_node){
+                return;
+            }
+        }
+    }
+
+
+    if (bat_err_index>=100){
+        bat_err_index_loop = 1;
+        bat_err_index = 0;
+    }else{
+        bat_err_index++;
+    }
+
+    // because when this function been called, it must be a serious problem that is err
+
+    bat_err_array[bat_err_index].err = err;
+    bat_err_array[bat_err_index].bad_cell = bad_cell;
+    bat_err_array[bat_err_index].bad_node = bad_node;
+
+
     return;
 }
 
@@ -557,6 +556,7 @@ uint8_t temp_transfer(uint16_t raw){
 
 void voltage_compensation(){
     //should compsensation to top and bottom cells
+    /*
     float dV = 500;         //in 0.0001V
     float temp = 0;
     float d=0;
@@ -565,12 +565,12 @@ void voltage_compensation(){
     
     for (stack=0;stack<3;stack++){
         //calculate voltage across interface
-        if (temp_transfer(mypack.stack[stack].value16) > 25){
-            dT = (float)(temp_transfer(mypack.stack[stack].value16) - 25);
+        if (temp_transfer(bat_stack[stack].value16) > 25){
+            dT = (float)(temp_transfer(bat_stack[stack].value16) - 25);
             temp = dT*0.017+1.4;
             d = (temp/1.4)*dV;
         }else{
-            dT = (float)(25-temp_transfer(mypack.stack[stack].value16));
+            dT = (float)(25-temp_transfer(bat_stack[stack].value16));
             temp = 1.4-dT*0.017;
             d = (temp/1.4)*dV;
         }
@@ -586,4 +586,49 @@ void voltage_compensation(){
         
     }
     
+    */
+    
 }
+
+
+
+
+// The basic idea of SOC estimation is reading current value and integrate them by time.
+// Time can be estimated from delta.Time
+BAT_SOC_t get_soc()
+{
+    BAT_SOC_t tempSOC;
+    tempSOC.absolute_SOC = bat_pack.current_charge;
+    tempSOC.percent_SOC = 100*tempSOC.absolute_SOC/SOC_FULL_CAP;  //percentile SOC
+    return tempSOC;
+} // get_soc()
+
+void update_soc(){
+    // calibrate SOC when voltage reach linear region.
+    // if its high SOC
+    if ((bat_pack.SOC_cali_flag==0) && (bat_pack.voltage >= SOC_CALI_HIGH)){
+        bat_pack.current_charge = SOC_SOC_HIGH;
+        bat_pack.SOC_cali_flag = 1;
+    }
+    // if its low SOC
+    if ((bat_pack.SOC_cali_flag==0) && (bat_pack.voltage <= SOC_CALI_LOW)){
+        bat_pack.current_charge = SOC_SOC_LOW;
+        bat_pack.SOC_cali_flag = 1;
+    }
+
+    // reset cali falg when charge droped into nomial voltage
+    if (bat_pack.voltage < (SOC_CALI_HIGH-1000) || bat_pack.voltage > (SOC_CALI_LOW+1000)){
+        bat_pack.SOC_cali_flag = 0;
+    }
+
+    // if it is full?
+    if (bat_pack.voltage >= SOC_FULL){
+        bat_pack.status |= FULL;
+    }
+
+    uint32_t deltaCharge = deltaTime*get_current();   //get_current returned mA
+    // deltaTime = (getTime) - lastTime;
+    bat_pack.current_charge = bat_pack.current_charge - deltaCharge;
+    return;
+}
+

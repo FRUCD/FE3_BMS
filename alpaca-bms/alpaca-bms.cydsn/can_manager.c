@@ -3,7 +3,7 @@
 #include "cell_interface.h"
 
 volatile uint8_t can_buffer[8];
-extern volatile BATTERYPACK mypack;
+extern BAT_PACK_t bat_pack;
 extern volatile uint8_t CAN_DEBUG;
 
 /* Data Frame format for Voltage and Temperature
@@ -17,108 +17,47 @@ The datatype consists of three bytes:
 
 void can_send_temp()
 {
-    uint32_t avg_temp=0;
-    uint32_t avg_board_temp=0;
-    uint8_t stack=0;
-    uint8_t cell=0;
-    
-    //process temperature
-    for(stack=0;stack<3;stack++){
-        avg_temp=0;
-        avg_board_temp=0;
-
-
-        
-        for(cell=0;cell<20;cell++){
-        avg_temp += temp_transfer(mypack.temp[stack][cell].value16)-6;
-        }
-        
-        avg_temp = avg_temp/20;
-        
-        can_buffer[0] = stack;
-        can_buffer[1] = 0xff & (avg_temp>>24);
-        can_buffer[2] = 0xff & (avg_temp>>16); // upper byte of C
-        can_buffer[3] = 0xff & (avg_temp>>8);
-        
-        can_buffer[4] = 0xff & avg_temp;
-        can_buffer[5] = 0x00;
-        can_buffer[6] = 0x00;
-        can_buffer[7] = 0x00;
-       
+ 
             
+    
+	CAN_1_SendMsgtemp();
+    CyDelay(5);
+
         
-		CAN_1_SendMsgtemp();
-        CyDelay(5);
-    }
-        
-        
-       // CAN_1_SendMsgtemp();
-        //CyDelay(5);
-    //}
 
 } // can_send_temp()
 
 
 
-void can_send_volt()
+void can_send_volt(uint8_t cell_index,
+    uint8_t cell_node,
+    uint16_t cell_voltage,
+    uint32_t pack_voltage)
 {
-    uint8_t stack=0;
-    uint8_t ic=0;
-    uint8_t cell=0;
     
-    uint32_t stack_voltage=mypack.stack[0].value32 + mypack.stack[1].value32 + mypack.stack[2].value32;
-    stack_voltage = stack_voltage/3;
-    //uint32_t stack_voltage = mypack.stack[2].value32;
+        can_buffer[0] = 0xff & cell_index;
 
-    if (CAN_DEBUG){
-        for (stack=0;stack<3;stack++){
-        for(ic=0;ic<4;ic++){
-            for(cell=0;cell<7;cell++){
-                can_buffer[0] = (stack*4+ic);
-                can_buffer[1] = cell;
-                can_buffer[2] = 0xFF & (mypack.cell[stack][ic][cell].value16>>8); // upper byte
-                can_buffer[3] = 0xFF & mypack.cell[stack][ic][cell].value16; // lower byte
-                
-                can_buffer[4] = 0xFF & (stack_voltage >> 24);
-                can_buffer[5] = 0xFF & (stack_voltage >> 16);
-                can_buffer[6] = 0xFF & (stack_voltage >> 8);
-                can_buffer[7] = 0xFF & (stack_voltage);
-                
-                CAN_1_SendMsgvolt();
-                CyDelay(5);
-            }
-        }
-    }
-    }else{
-        for (stack =0;stack<3;stack++){
-        stack_voltage = mypack.stack[stack].value32;
-        can_buffer[0] = 0xff & stack;
-        can_buffer[1] = 0x00;
-        can_buffer[2] = 0x00;
-        can_buffer[3] = 0x00;
-        
-        can_buffer[4] = 0xFF & (stack_voltage >> 24);
-        can_buffer[5] = 0xFF & (stack_voltage >> 16);
-        can_buffer[6] = 0xFF & (stack_voltage >> 8);
-        can_buffer[7] = 0xFF & (stack_voltage);
+        can_buffer[1] = 0XFF & cell_node;
+
+        can_buffer[2] = 0xFF & (cell_voltage >> 8);
+        can_buffer[3] = 0xFF & (cell_voltage);
+
+        can_buffer[4] = 0xFF & (pack_voltage >> 24);
+        can_buffer[5] = 0xFF & (pack_voltage >> 16);
+        can_buffer[6] = 0xFF & (pack_voltage >> 8);
+        can_buffer[7] = 0xFF & (pack_voltage);
+
+
         CAN_1_SendMsgvolt();
         CyDelay(1);
-    }
-    }
-    
-    
 
-
- 
-
-	
 } // can_send_volt()
 
 
 
 void can_send_current()
 {
-    int16_t battery_current = mypack.current;
+    int16_t battery_current = bat_pack.current;
 	can_buffer[0] = 0xFF & (battery_current>>8); // upper byte
 	can_buffer[1] = 0xFF & battery_current; // lower byte
     can_buffer[2] = 0x00; 

@@ -37,7 +37,7 @@
 #include "EEPROM_1.h"
 #include "SS_aliases.h"
 #include "SS.h"
-#include "poll.h"
+#include "current_update_ISR.h"
 #include "ADC_current.h"
 #include "current_aliases.h"
 #include "current.h"
