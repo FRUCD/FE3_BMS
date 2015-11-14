@@ -24,8 +24,8 @@
     #define BAD_FILTER_LIMIT (5u)
     
     #define CELL_ENABLE (0x1cf)
-    #define OVER_VOLTAGE (42000u)
-    #define UNDER_VOLTAGE (20000u)
+    #define OVER_VOLTAGE (4200u)
+    #define UNDER_VOLTAGE (2000u)
     #define STACK_VOLT_DIFF_LIMIT (30000u)
     #define CRITICAL_TEMP_L (2000u)          //0.2V
     #define CRITICAL_TEMP_H (10213u)             //1.0213V  10213
@@ -98,7 +98,8 @@ typedef struct
 
 typedef struct
 {
-  uint16_t temp;
+  uint16_t temp_raw;
+  uint8_t temp_c;
   uint8_t bad_counter;
   uint8_t type;
   uint8_t bad_type;
@@ -132,6 +133,8 @@ typedef struct
   BAT_HEALTH health;
   uint32_t current_charge;
   uint8_t SOC_cali_flag;
+  uint8_t HI_temp_c;
+  uint8_t HI_temp_raw;
 }BAT_PACK_t;
 
 typedef struct 

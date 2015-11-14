@@ -1157,7 +1157,6 @@ void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
  *************************************************************/
 void print_cells(uint16_t raw)
 {
-    LCD_PrintDecUint16(raw);
    
 }
 

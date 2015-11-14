@@ -67,11 +67,12 @@ void mypack_init(){
     // FE3 new data structure
     // initialize cells and temps
     for (cell = 0; cell<N_OF_CELL;cell++){
-        bat_cell[cell].voltage = 0;
+        bat_cell[cell].voltage = cell;
         bat_cell[cell].bad_counter = 0;
     }
     for (temp = 0; temp < N_OF_TEMP ; temp++){
-        bat_temp[temp].temp = 0;
+        bat_temp[temp].temp_c = temp;
+        bat_temp[temp].temp_raw = temp;
         bat_temp[temp].bad_counter = 0;
         bat_temp[temp].bad_type = 0;
         if ((temp%10) < 5){
@@ -84,22 +85,24 @@ void mypack_init(){
 
     // register node
     for (node = 0; node < N_OF_NODE; node++){
+        cell = 0;
+        temp = 0;
         for (cell = 0; cell < 14; cell++){    
             bat_node[node].cells[cell] = &(bat_cell[node*14+cell]);
         }
         for (temp = 0; temp < 10; temp++){
             bat_node[node].temps[temp] = &(bat_temp[node*10+temp]);
         }
-        bat_node[node].over_temp = 0;
-        bat_node[node].under_temp = 0;
-        bat_node[node].over_voltage = 0;
-        bat_node[node].under_voltage = 0;
+        bat_node[node].over_temp = node;
+        bat_node[node].under_temp = node;
+        bat_node[node].over_voltage = node;
+        bat_node[node].under_voltage = node;
     }
     // register stack
     for (stack = 0;stack < N_OF_STACK; stack++){
         bat_stack[stack].nodes[0] = &(bat_node[stack*2]);
         bat_stack[stack].nodes[1] = &(bat_node[stack*2+1]);
-        bat_stack[stack].voltage = 0;
+        bat_stack[stack].voltage = stack;
     }
     // register pac
     for (stack = 0; stack< 3; stack++){
@@ -108,12 +111,14 @@ void mypack_init(){
     for (node = 0; node<6; node++){
         bat_pack.nodes[node] = &(bat_node[node]);
     }
-    bat_pack.voltage = 0;
-    bat_pack.current = 0;
+    bat_pack.voltage = 25;
+    bat_pack.current = 45;
     bat_pack.fuse_fault = 0;
     bat_pack.status = 0; 
     bat_pack.health = NORMAL;
     bat_pack.SOC_cali_flag =0;
+    bat_pack.HI_temp_c = 0;
+    bat_pack.HI_temp_raw = 0;
     
     
 }
@@ -279,11 +284,10 @@ void update_volt(uint16_t cell_codes[TOTAL_IC][12]){
     for (ic=0;ic<TOTAL_IC;ic++){
         for (raw_cell=0;raw_cell<12;raw_cell++){
             if ((CELL_ENABLE & (0x1<<raw_cell))){
-                bat_cell[cell].voltage = cell_codes[ic][raw_cell];
+                bat_cell[cell].voltage = cell_codes[ic][raw_cell]/10;  //only record in mV not in 0.1mV
                 cell++;
             }
         }
-        cell=0;
     }
 
     // voltage_compensation();
@@ -294,6 +298,7 @@ void update_volt(uint16_t cell_codes[TOTAL_IC][12]){
     stack = 0;
     temp_volt = 0;
     for (stack = 0; stack<3; stack++){
+        temp_volt = 0;
         for (node = 0; node<2; node++){
             for (cell = 0; cell<14; cell++){
                 temp_volt += (uint32_t)(bat_stack[stack].nodes[node]->cells[cell]->voltage);
@@ -304,10 +309,11 @@ void update_volt(uint16_t cell_codes[TOTAL_IC][12]){
 
     // FE3 update pack voltage
     stack = 0;
+    temp_volt = 0;
     for (stack = 0; stack<3; stack++){
         temp_volt += bat_pack.stacks[stack]->voltage;
     }
-    bat_pack.voltage = temp_volt;
+    bat_pack.voltage = temp_volt/3;
 
 }
 
@@ -373,8 +379,14 @@ void update_temp(uint16_t aux_codes[TOTAL_IC][6]){
     // update node
     temp = 0;
     for (ic = 0; ic < 12; ic++){
-        for (i = 0; i < 6; i++){
-            bat_temp[temp].temp = aux_codes[ic][i];
+        for (i = 0; i < 5; i++){
+            bat_temp[temp].temp_raw = aux_codes[ic][i];
+            bat_temp[temp].temp_c = (uint8_t)temp_transfer(aux_codes[ic][i]);
+            if (bat_temp[temp].temp_c > bat_pack.HI_temp_c){
+                bat_pack.HI_temp_c = bat_temp[temp].temp_c;
+                bat_pack.HI_temp_raw = bat_temp[temp].temp_raw;
+            }
+            temp++;
         }
     }
 
@@ -384,15 +396,15 @@ void update_temp(uint16_t aux_codes[TOTAL_IC][6]){
 void check_temp(){
     uint8_t temp=0;
     uint8_t node=0;
-    uint16_t temp16=0;
+    uint16_t temp_c=0;
 
     // check temp
     for (node = 0; node<N_OF_TEMP; node++){
-        temp16 = bat_temp[node].temp;
-        if (temp16 > (uint16_t)CRITICAL_TEMP_H){
+        temp_c = bat_temp[node].temp_c;
+        if (temp_c > (uint8_t)CRITICAL_TEMP_H){
             bat_temp[temp].bad_counter++;
             bat_temp[temp].bad_type = 1;
-        }else if (temp16 < (uint16_t)CRITICAL_TEMP_L){
+        }else if (temp_c < (uint8_t)CRITICAL_TEMP_L){
             bat_temp[temp].bad_counter++;
             bat_temp[temp].bad_type = 0;
         }else{
@@ -478,19 +490,22 @@ void check_stack_fuse()
 			bat_stack[1].bad_counter > FUSE_BAD_LIMIT)
 		{
 			bat_pack.fuse_fault = 1;
-		} // if fuse on stack 1 fails
+            bat_pack.voltage = (bat_pack.stacks[0]->voltage+bat_pack.stacks[2]->voltage)/2;
+		} // if fuse on stack 1 fails and compensate the pack voltage
 
 		if(bat_stack[1].bad_counter > FUSE_BAD_LIMIT &&
 			bat_stack[2].bad_counter > FUSE_BAD_LIMIT)
 		{
 			bat_pack.fuse_fault = 2;
-		} // if fuse on stack 2 fails
+            bat_pack.voltage = (bat_pack.stacks[0]->voltage+bat_pack.stacks[1]->voltage)/2;
+		} // if fuse on stack 2 fails and compensate the pack voltage
 
 		if(bat_stack[2].bad_counter > FUSE_BAD_LIMIT &&
 			bat_stack[0].bad_counter > FUSE_BAD_LIMIT)
 		{
 			bat_pack.fuse_fault = 0;
-		} // if fuse on stack 0 fails
+            bat_pack.voltage = (bat_pack.stacks[1]->voltage+bat_pack.stacks[2]->voltage)/2;
+		} // if fuse on stack 0 fails and compensate the pack voltage
 
 		}  
 	}

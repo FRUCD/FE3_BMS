@@ -9,6 +9,8 @@
 #include "uart-terminal.h"
 #include "BMS_monitor.h"
 
+//#define WDT_ENABLE
+
 typedef enum 
 {
 	BMS_BOOTUP,
@@ -30,16 +32,16 @@ volatile uint8_t CAN_DEBUG=0;
 volatile uint8_t RACING_FLAG=0;    // this flag should be set in CAN handler
 BAT_SOC_t bat_soc;
 
+void DEBUG_send_cell_voltage();
+void DEBUG_send_temp();
+void DEBUG_send_current();
 
 
 
-CY_ISR(CAN_UPDATE_Handler){
-    Can_Update_Timer_STATUS;
-    CAN_UPDATE_FLAG = 1;
-}
+
 
 CY_ISR(current_update_Handler){
-    current_Timer_STATUS;
+    current_timer_STATUS;
 	update_soc();
 	return;
 }
@@ -52,6 +54,51 @@ void process_event(){
     	bat_pack.status,
     	0,0,0);
 }
+
+void DEBUG_send_cell_voltage(){
+    uint8_t node, cell;
+    for (node = 0; node< N_OF_NODE; node++){
+        cell = 0;
+        for (cell = 0;cell<14;cell++){
+            can_send_volt(cell,
+				node,
+				bat_pack.nodes[node]->cells[cell]->voltage,
+				bat_pack.voltage);
+            CyDelay(1);
+        }
+    }
+}
+
+void DEBUG_send_temp(){
+    uint8_t node, temp;
+    for (node = 0; node< N_OF_NODE; node++){
+        temp = 0;
+        for (temp = 0;temp<10;temp++){
+            can_send_temp(temp,
+				node,
+				bat_pack.nodes[node]->temps[temp]->temp_c,
+				bat_pack.nodes[node]->temps[temp]->temp_raw,
+                bat_pack.HI_temp_c);
+            CyDelay(1);
+        }
+    }
+}
+
+void DEBUG_send_current(){
+    uint8_t node, temp;
+    for (node = 0; node< N_OF_NODE; node++){
+        temp = 0;
+        for (temp = 0;temp<10;temp++){
+            can_send_temp(temp,
+				node,
+				bat_pack.nodes[node]->temps[temp]->temp_c,
+				bat_pack.nodes[node]->temps[temp]->temp_raw,
+                bat_pack.HI_temp_c);
+            CyDelay(1);
+        }
+    }
+}
+
 
 void process_failure_helper(BAT_ERR_t err){
 	switch(err.err){
@@ -97,23 +144,25 @@ int main(void)
 	// Initialize state machine
 	BMS_MODE bms_status = BMS_BOOTUP;
 	uint32_t system_interval = 100;
-
+    uint8_t led = 0;
+    
+    
 	while(1){
 		switch (bms_status){
 			case BMS_BOOTUP:
-				Can_Update_ISR_StartEx(CAN_UPDATE_Handler);
-                current_update_ISR_StartEx(current_update_Handler);
-				Can_Update_Timer_Start();
-                current_Timer_Start();
+               // current_update_ISR_StartEx(current_update_Handler);
+                //current_timer_Start();
 				can_init();
 				
-				// TODO Watchdog Timer
-			    CyWdtStart(CYWDT_1024_TICKS,CYWDT_LPMODE_NOCHANGE);
-
+				#ifdef WDT_ENABLE
+                    // TODO Watchdog Timer
+			        CyWdtStart(CYWDT_1024_TICKS,CYWDT_LPMODE_NOCHANGE);
+                #endif
+                
 				// Initialize
 				bms_init();
 				mypack_init();
-				current_init();
+				//current_init();
 			    //monitor_init();
 			    
 			    //enable global interrupt
@@ -121,6 +170,7 @@ int main(void)
 		    
 			    //some variables and states
 			    OK_SIG_Write(1);
+                bms_status = BMS_NORMAL;
 		       //terminal_run();
 				break;
 
@@ -129,14 +179,18 @@ int main(void)
 			    //check_cfg();  //CANNOT be finished, because 
 				//check_cells();// TODO This function will be finished in get_cell_volt/check stack fuse
 		        get_cell_volt();// TODO Get voltage
+                //DEBUG_send_cell_voltage();
+                //DEBUG_send_temp();
 				check_stack_fuse(); // TODO: check if stacks are disconnected
 				get_cell_temp();// TODO Get temperature
-				get_current(); // TODO get current reading from sensor
-				bat_soc = get_soc(); // TODO calculate SOC()
+                
+				//get_current(); // TODO get current reading from sensor
+				//bat_soc = get_soc(); // TODO calculate SOC()
 				// because it is normal mode, just set a median length current reading interval
 				set_current_interval(100);
 				system_interval = 1000;
 
+                /*
 				if (bat_pack.health == FAULT){
 					bms_status = BMS_FAULT;
 				}
@@ -145,6 +199,7 @@ int main(void)
 				}else if(RACING_FLAG){
 					bms_status = BMS_RACINGMODE;
 				}
+                */
 				break;
 
 			case BMS_CHARGEMODE:
@@ -179,15 +234,17 @@ int main(void)
 				get_current(); // TODO get current reading from sensor
 				bat_soc = get_soc(); // TODO calculate SOC()
 
-				system_interval = 200;
+				system_interval = 1000;
 				set_current_interval(1);
 
+                
 				if (bat_pack.health == FAULT){
 					bms_status = BMS_FAULT;
 				}
 				if (!RACING_FLAG){
 					bms_status = BMS_NORMAL;
 				}
+                
 				break;
 
 			case BMS_SLEEPMODE:
@@ -205,7 +262,9 @@ int main(void)
 				bms_status = BMS_FAULT;
 
 		}
-		CyWdtClear();
+        #ifdef WDT_ENABLE
+		    CyWdtClear();
+        #endif
 		process_event();
 		CyDelay(system_interval);
 	}

@@ -15,11 +15,24 @@ The datatype consists of three bytes:
 
 
 
-void can_send_temp()
+void can_send_temp(uint8_t temp_index,
+    uint8_t temp_node,
+    uint16_t temp_c,
+    uint32_t temp_raw,
+    uint8_t HI_temp_c)
 {
- 
+    can_buffer[0] = 0xff & temp_index;
+
+    can_buffer[1] = 0XFF & temp_node;
+
+    can_buffer[2] = temp_c;
+    can_buffer[3] = 0;
+
+    can_buffer[4] = HI8(temp_raw);
+    can_buffer[5] = LO8(temp_raw);
+    can_buffer[6] = 0x00;
+    can_buffer[7] = 0xFF & (HI_temp_c);
             
-    
 	CAN_1_SendMsgtemp();
     CyDelay(5);
 
@@ -39,8 +52,8 @@ void can_send_volt(uint8_t cell_index,
 
         can_buffer[1] = 0XFF & cell_node;
 
-        can_buffer[2] = 0xFF & (cell_voltage >> 8);
-        can_buffer[3] = 0xFF & (cell_voltage);
+        can_buffer[2] = HI8(cell_voltage);
+        can_buffer[3] = LO8(cell_voltage);
 
         can_buffer[4] = 0xFF & (pack_voltage >> 24);
         can_buffer[5] = 0xFF & (pack_voltage >> 16);
@@ -84,12 +97,12 @@ void can_send_status(uint8_t SOC_P,
 //16 Pack balance (delta) mV
     can_buffer[0] = SOC_P;
     can_buffer[1] = AH;
-    can_buffer[2] = (status>>8) & 0xFF;
-    can_buffer[3] = (status) & 0xFF;
+    can_buffer[2] = HI8(status);
+    can_buffer[3] = LO8(status);
     can_buffer[4] = stack & 0xFF;
     can_buffer[5] = (cell) & 0xFF;
-    can_buffer[6] = (value16>>8) & 0xFF;
-    can_buffer[7] = (value16) & 0xFF;
+    can_buffer[6] = HI8(value16);
+    can_buffer[7] = LO8(value16);
 
     CAN_1_SendMsgstatus();
 }

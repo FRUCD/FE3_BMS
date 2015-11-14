@@ -1,7 +1,7 @@
 /*******************************************************************************
 * File Name: project.h
 * 
-* PSoC Creator  3.3
+* PSoC Creator  3.3 CP1
 *
 * Description:
 * It contains references to all generated header files and should not be modified.
@@ -52,9 +52,6 @@
 #include "WDT_timer.h"
 #include "WDT_timer_clock.h"
 #include "WDT_ISR.h"
-#include "timer_clock_1.h"
-#include "Can_Update_Timer.h"
-#include "Can_Update_ISR.h"
 #include "LTC68_IntClock.h"
 #include "ADC_current_AMux.h"
 #include "ADC_current_Ext_CP_Clk.h"
