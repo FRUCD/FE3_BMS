@@ -82,7 +82,7 @@ uint8_t ADAX[2]; //!< GPIO conversion command.
 */
 void LTC6804_initialize()
 {
-  set_adc(MD_NORMAL,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL);
+  set_adc(MD_NORMAL,DCP_ENABLED,CELL_CH_ALL,AUX_CH_ALL);
     //set_adc(MD_NORMAL,DCP_DISABLED,CELL_CH_1and7 | CELL_CH_2and8 | CELL_CH_3and9,AUX_CH_ALL);
     
   LTC6804_init_cfg();        //initialize the 6804 configuration array to be written
@@ -93,7 +93,7 @@ void LTC6804_initialize()
  **************************************/
 void LTC6804_init_cfg()
 {
-  int i = 0;
+  uint8_t i = 0;
   for(i = 0; i<TOTAL_IC;i++)
   {
     tx_cfg[i][0] = 0xFE;
