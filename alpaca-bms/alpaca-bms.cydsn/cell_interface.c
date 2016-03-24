@@ -66,13 +66,16 @@ void mypack_init(){
 
     // FE3 new data structure
     // initialize cells and temps
+    // with ordered to help debugging
+    cell = 0;
     for (cell = 0; cell<N_OF_CELL;cell++){
         bat_cell[cell].voltage = cell;
         bat_cell[cell].bad_counter = 0;
     }
+    temp = 0;
     for (temp = 0; temp < N_OF_TEMP ; temp++){
-        bat_temp[temp].temp_c = temp;
-        bat_temp[temp].temp_raw = temp;
+        bat_temp[temp].temp_c = (uint8_t)temp;
+        bat_temp[temp].temp_raw = (uint16_t)temp;
         bat_temp[temp].bad_counter = 0;
         bat_temp[temp].bad_type = 0;
         if ((temp%10) < 5){
@@ -84,6 +87,7 @@ void mypack_init(){
     }
 
     // register node
+    node = 0;
     for (node = 0; node < N_OF_NODE; node++){
         cell = 0;
         temp = 0;
@@ -93,26 +97,30 @@ void mypack_init(){
         for (temp = 0; temp < 10; temp++){
             bat_node[node].temps[temp] = &(bat_temp[node*10+temp]);
         }
-        bat_node[node].over_temp = node;
-        bat_node[node].under_temp = node;
-        bat_node[node].over_voltage = node;
-        bat_node[node].under_voltage = node;
+        bat_node[node].over_temp = 0;
+        bat_node[node].under_temp = 0;
+        bat_node[node].over_voltage = 0;
+        bat_node[node].under_voltage = 0;
     }
     // register stack
+    stack = 0;
     for (stack = 0;stack < N_OF_STACK; stack++){
         bat_stack[stack].nodes[0] = &(bat_node[stack*2]);
         bat_stack[stack].nodes[1] = &(bat_node[stack*2+1]);
         bat_stack[stack].voltage = stack;
     }
     // register pac
+    stack = 0;
     for (stack = 0; stack< 3; stack++){
         bat_pack.stacks[stack] = &(bat_stack[stack]);
     }
     for (node = 0; node<6; node++){
         bat_pack.nodes[node] = &(bat_node[node]);
     }
-    bat_pack.voltage = 25;
-    bat_pack.current = 45;
+    
+    //give the pack non-0 value help debuging CAN
+    bat_pack.voltage = 12;
+    bat_pack.current = 34;
     bat_pack.fuse_fault = 0;
     bat_pack.status = 0; 
     bat_pack.health = NORMAL;
@@ -194,16 +202,26 @@ uint8_t get_cell_temp(){
     LTC6804_adax();
     CyDelay(3);  
     wakeup_sleep();
-    error = LTC6804_rdaux(0,TOTAL_IC,aux_codes); // Set to read back all aux registers
-    if (error == -1)
-    {
+    uint8_t redundant=3;
+    while (redundant>0){   
+        //read three time at most
+        error = LTC6804_rdaux(0,TOTAL_IC,aux_codes); // Set to read back all aux registers
+        //DEBUG
+        error=0;
+        if (error == 0)
+        {
+            break;
+        }
+        redundant-=1;
+    }
+    
+    if (redundant <= 0){
         #ifdef DEBUG_LCD
         LCD_Position(0u,10u);
         LCD_PrintString("ERROR");
         #endif
         return 1;
     }
- 
 
     //get information
     update_temp(aux_codes);
@@ -381,7 +399,8 @@ void update_temp(uint16_t aux_codes[TOTAL_IC][6]){
     for (ic = 0; ic < 12; ic++){
         for (i = 0; i < 5; i++){
             bat_temp[temp].temp_raw = aux_codes[ic][i];
-            bat_temp[temp].temp_c = (uint8_t)temp_transfer(aux_codes[ic][i]);
+            bat_temp[temp].temp_ref = aux_codes[ic][5];
+            bat_temp[temp].temp_c = (uint8_t)temp_transfer(aux_codes[ic][i], aux_codes[ic][5]);
             if (bat_temp[temp].temp_c > bat_pack.HI_temp_c){
                 bat_pack.HI_temp_c = bat_temp[temp].temp_c;
                 bat_pack.HI_temp_raw = bat_temp[temp].temp_raw;
@@ -397,17 +416,33 @@ void check_temp(){
     uint8_t temp=0;
     uint8_t node=0;
     uint16_t temp_c=0;
+    
+    // ignore the known broken thermistors
+    //    if (node == 3 || node == 17 || node == 27){
+    bat_temp[3].temp_raw = bat_temp[2].temp_raw;
+    bat_temp[3].temp_c = bat_temp[2].temp_c;
+    
+    bat_temp[17].temp_raw = bat_temp[16].temp_raw;
+    bat_temp[17].temp_c = bat_temp[16].temp_c;
+    
+    bat_temp[27].temp_raw = bat_temp[26].temp_raw;
+    bat_temp[27].temp_c = bat_temp[26].temp_c;
 
     // check temp
     for (node = 0; node<N_OF_TEMP; node++){
+        
+        
         temp_c = bat_temp[node].temp_c;
         if (temp_c > (uint8_t)CRITICAL_TEMP_H){
+            //if over temperature
             bat_temp[temp].bad_counter++;
             bat_temp[temp].bad_type = 1;
         }else if (temp_c < (uint8_t)CRITICAL_TEMP_L){
+            // if under temperature
             bat_temp[temp].bad_counter++;
             bat_temp[temp].bad_type = 0;
         }else{
+            //if there is no error
             if (bat_temp[temp].bad_counter>0){
                 bat_temp[temp].bad_counter--;
             }           
@@ -553,19 +588,19 @@ void bat_err_add(uint16_t err, uint8_t bad_cell, uint8_t bad_node){
 }
 
 
-uint8_t temp_transfer(uint16_t raw){
+uint8_t temp_transfer(uint16_t raw, uint16_t ref){
     //using 1/T = 1/T0 +(1/B)(R/R0)
     //V = raw/0xffff*5
     //R is R=10K(5-V)/V;
     //translate raw reading to C temperature
     //B25=3900
     //B75=3936
-    float vcc=5.0;
+    float vcc=ref/10000.0;
     float V=((float)raw*vcc/0xffff);
-    float R=10000.0*(vcc-V)/V;
+    float R=10000.0*V/(vcc-V);
     float R0=10000.0;
-    float oneOverT=(1/298.15)+(1/3950.0)*(log(R/R0));
-    return ((uint8_t)(floor(1/oneOverT)));
+    float oneOverT=(1/298.15)+(1/3936.0)*(log(R/R0));
+    return ((uint8_t)(floor((1/oneOverT)-273.15)));
 }
 //void balance_cells(){}// balance_cells()
 

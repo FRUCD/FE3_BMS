@@ -190,16 +190,16 @@ int main(void)
 				set_current_interval(100);
 				system_interval = 1000;
 
-                /*
+                
 				if (bat_pack.health == FAULT){
 					bms_status = BMS_FAULT;
 				}
-				if (bat_pack.status || CHARGEMODE){
+				if (bat_pack.status && CHARGEMODE){
 					bms_status = BMS_CHARGEMODE;
 				}else if(RACING_FLAG){
 					bms_status = BMS_RACINGMODE;
 				}
-                */
+                
 				break;
 
 			case BMS_CHARGEMODE:

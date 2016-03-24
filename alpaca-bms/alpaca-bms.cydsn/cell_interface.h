@@ -103,6 +103,7 @@ typedef struct
   uint8_t bad_counter;
   uint8_t type;
   uint8_t bad_type;
+  uint16_t temp_ref;
 }BAT_TEMP_t;
 
 typedef struct
@@ -279,7 +280,7 @@ void check_stack_fuse();
  */
 void bat_err_add(uint16_t, uint8_t, uint8_t);
 
-uint8_t temp_transfer(uint16_t);
+uint8_t temp_transfer(uint16_t, uint16_t);
 
 void voltage_compensation();
 
