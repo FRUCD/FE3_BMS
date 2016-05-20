@@ -6,26 +6,26 @@
     <Toolchain Name="ARM GCC Generic" Selected="True">
       <Tool Name="prebuild" Command="" Options="" />
       <Tool Name="assembler" Command="arm-none-eabi-as.exe" Options="-mcpu=cortex-m3 -mthumb -I. -IGenerated_Source\PSoC5 -alh=${OutputDir}/${CompileFile}.lst -g -W" />
-      <Tool Name="compiler" Command="arm-none-eabi-gcc.exe" Options="-mcpu=cortex-m3 -mthumb -Wno-main -I. -IGenerated_Source\PSoC5 -Wa,-alh=${OutputDir}/${CompileFile}.lst -g -D NDEBUG -Wall -ffunction-sections -Os -ffat-lto-objects" />
-      <Tool Name="linker" Command="arm-none-eabi-gcc.exe" Options="-mcpu=cortex-m3 -mthumb -g -ffunction-sections -Os -l m -L Generated_Source\PSoC5 -Wl,-Map,${OutputDir}/${ProjectShortName}.map -T Generated_Source\PSoC5\cm3gcc.ld -specs=nano.specs -Wl,--gc-sections" />
+      <Tool Name="compiler" Command="arm-none-eabi-gcc.exe" Options="-mcpu=cortex-m3 -mthumb -Wno-main -I. -IGenerated_Source\PSoC5 -Wa,-alh=${OutputDir}/${CompileFile}.lst -g -D DEBUG -Wall -ffunction-sections -O0 -ffat-lto-objects" />
+      <Tool Name="linker" Command="arm-none-eabi-gcc.exe" Options="-mcpu=cortex-m3 -mthumb -g -ffunction-sections -O0 -l m -L Generated_Source\PSoC5 -Wl,-Map,${OutputDir}/${ProjectShortName}.map -T Generated_Source\PSoC5\cm3gcc.ld -specs=nano.specs -Wl,--gc-sections" />
       <Tool Name="postbuild" Command="" Options="" />
     </Toolchain>
     <Toolchain Name="ARM MDK Generic" Selected="False">
       <Tool Name="prebuild" Command="" Options="" />
       <Tool Name="assembler" Command="armasm.exe" Options="--cpu=Cortex-M3 --diag_style=gnu --thumb -i. -iGenerated_Source\PSoC5 -g --list=${OutputDir}/${CompileFile}.lst" />
-      <Tool Name="compiler" Command="armcc.exe" Options="--cpu=Cortex-M3 --diag_style=gnu --diag_suppress=951 -I. -IGenerated_Source\PSoC5 --list --signed_chars -g -Ospace --split_sections" />
+      <Tool Name="compiler" Command="armcc.exe" Options="--cpu=Cortex-M3 --diag_style=gnu --diag_suppress=951 -I. -IGenerated_Source\PSoC5 --list --signed_chars -g -D DEBUG -O0 --split_sections" />
       <Tool Name="linker" Command="armlink.exe" Options="--cpu=Cortex-M3 --diag_style=gnu --no_startup --library_type=microlib --map --list ${OutputDir}/${ProjectShortName}.map --scatter Generated_Source\PSoC5\Cm3RealView.scat" />
       <Tool Name="postbuild" Command="" Options="" />
     </Toolchain>
     <Toolchain Name="ARM IAR Generic" Selected="False">
       <Tool Name="prebuild" Command="" Options="" />
-      <Tool Name="assembler" Command="iasmarm.exe" Options="--cpu Cortex-M3 -I. -IGenerated_Source\PSoC5 -s+ -M&lt;&gt; -w+ -r -DNDEBUG --fpu None" />
-      <Tool Name="compiler" Command="iccarm.exe" Options="--cpu Cortex-M3 -I. -IGenerated_Source\PSoC5 -D NDEBUG --debug --endian=little -e --fpu=None --no_wrap_diagnostics" />
+      <Tool Name="assembler" Command="iasmarm.exe" Options="--cpu Cortex-M3 -I. -IGenerated_Source\PSoC5 -s+ -M&lt;&gt; -w+ -r -DDEBUG --fpu None" />
+      <Tool Name="compiler" Command="iccarm.exe" Options="--cpu Cortex-M3 -I. -IGenerated_Source\PSoC5 -D DEBUG --no_cse --no_unroll --no_inline --no_code_motion --no_tbaa --no_clustering --no_scheduling --debug --endian=little -e --fpu=None -On --no_wrap_diagnostics" />
       <Tool Name="linker" Command="ilinkarm.exe" Options="--semihosting --entry __iar_program_start --vfe" />
       <Tool Name="postbuild" Command="" Options="" />
     </Toolchain>
   </Toolchains>
-  <Project Name="alpaca-bms" Path="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" Version="4.20" Type="Normal">
+  <Project Name="alpaca-bms" Path="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" Version="4.20" Type="Normal">
     <CMSIS_SVD_File>alpaca-bms.svd</CMSIS_SVD_File>
     <Datasheet />
     <LinkerFiles>
@@ -34,8 +34,8 @@
       <LinkerFile Toolchain="ARM IAR Generic">.\Generated_Source\PSoC5\Cm3Iar.icf</LinkerFile>
     </LinkerFiles>
     <Folders>
-      <Folder BuildType="BUILD" Path="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn">
+      <Folder BuildType="BUILD" Path="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn">
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn">
           <File BuildType="BUILD" Toolchain="">.\main.c</File>
           <File BuildType="BUILD" Toolchain="">.\cell_interface.c</File>
           <File BuildType="BUILD" Toolchain="">.\cell_interface.h</File>
@@ -55,8 +55,8 @@
           <File BuildType="BUILD" Toolchain="">.\BMS_monitor.h</File>
         </Files>
       </Folder>
-      <Folder BuildType="STRICT" Path="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn\Generated_Source\PSoC5">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn">
+      <Folder BuildType="STRICT" Path="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn\Generated_Source\PSoC5">
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn">
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\cyfitter_cfg.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\cyfitter_cfg.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\cymetadata.c</File>
@@ -115,8 +115,6 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\MISO_aliases.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\MISO.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\MISO.h</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\EEPROM_1.c</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\EEPROM_1.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\LTC68.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\LTC68.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\LTC68_PM.c</File>
@@ -157,6 +155,8 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\WDT_timer_clock.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\WDT_ISR.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\WDT_ISR.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\timer_clock_1.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\timer_clock_1.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\USBUART.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\USBUART.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\USBUART_audio.c</File>
@@ -184,49 +184,59 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\USBUART_Dp.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\current_update_ISR.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\current_update_ISR.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\current_supply_aliases.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\current_supply.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\current_supply.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\MUX_current.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\MUX_current.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SOC_Store.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SOC_Store.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SOC_Timer.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SOC_Timer.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SOC_Timer_PM.c</File>
         </Files>
       </Folder>
-      <Folder BuildType="STRICT" Path="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn\Export\ARM_GCC_Generic">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn">
+      <Folder BuildType="STRICT" Path="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn\Export\ARM_GCC_Generic">
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn">
           <File BuildType="BUILD" Toolchain="ARM GCC Generic">.\Export\ARM_GCC_Generic\CyComponentLibrary.a</File>
         </Files>
       </Folder>
-      <Folder BuildType="STRICT" Path="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn\Export\ARM_MDK_Generic">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn">
+      <Folder BuildType="STRICT" Path="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn\Export\ARM_MDK_Generic">
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn">
           <File BuildType="BUILD" Toolchain="ARM MDK Generic">.\Export\ARM_MDK_Generic\CyComponentLibrary.a</File>
         </Files>
       </Folder>
-      <Folder BuildType="STRICT" Path="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn\Export\ARM_IAR_Generic">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn">
+      <Folder BuildType="STRICT" Path="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn\Export\ARM_IAR_Generic">
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn">
           <File BuildType="BUILD" Toolchain="ARM IAR Generic">.\Export\ARM_IAR_Generic\CyComponentLibrary.a</File>
         </Files>
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\codegentemp">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\ARM_GCC_441">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\ARM_GCC_473">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\DP8051_Keil_952">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\DP8051">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\CortexM0">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\CortexM3">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\Generated_Source\PSoC3">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\Generated_Source\PSoC4">
-        <Files Root="C:\Users\khjtony\workspace\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
+        <Files Root="V:\FE3_BMS\alpaca-bms\alpaca-bms.cydsn" />
       </Folder>
     </Folders>
   </Project>

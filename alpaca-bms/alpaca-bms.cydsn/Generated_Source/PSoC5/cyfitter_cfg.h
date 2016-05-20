@@ -1,7 +1,7 @@
 /*******************************************************************************
 * File Name: cyfitter_cfg.h
 * 
-* PSoC Creator  3.3 CP1
+* PSoC Creator  3.3
 *
 * Description:
 * This file provides basic startup and mux configration settings
@@ -23,6 +23,16 @@ extern void cyfitter_cfg(void);
 
 /* Analog Set/Unset methods */
 extern void SetAnalogRoutingPumps(uint8 enabled);
+extern void MUX_current_Set(uint8 channel);
+extern void MUX_current_Unset(uint8 channel);
+/* MUX_current__addrTable is an implementation detail of the AMux.
+   Code that depends on it may be incompatible with other versions
+   of PSoC Creator. */
+extern uint8 CYXDATA * const CYCODE MUX_current__addrTable[4];
+/* MUX_current__maskTable is an implementation detail of the AMux.
+   Code that depends on it may be incompatible with other versions
+   of PSoC Creator. */
+extern const uint8 CYCODE MUX_current__maskTable[4];
 extern void ADC_current_AMux_Set(uint8 channel);
 extern void ADC_current_AMux_Unset(uint8 channel);
 /* ADC_current_AMux__addrTable is an implementation detail of the AMux.

@@ -49,10 +49,25 @@ CY_ISR(current_update_Handler){
 
 void process_event(){
     // heartbeat
-    can_send_status(bat_soc.percent_SOC,
-    	0,
+    can_send_status(0xFE,
+    	bat_pack.SOC_percent,
     	bat_pack.status,
     	0,0,0);
+    // send voltage
+    can_send_volt(bat_pack.LO_voltage,
+				bat_pack.HI_voltage,
+				bat_pack.voltage);
+    // send temperature
+    can_send_temp(bat_pack.nodes[0]->high_temp,
+				bat_pack.nodes[1]->high_temp,
+                bat_pack.nodes[2]->high_temp,
+                bat_pack.nodes[3]->high_temp,
+                bat_pack.nodes[4]->high_temp,
+                bat_pack.nodes[5]->high_temp,
+				bat_pack.HI_temp_node,
+				bat_pack.HI_temp_c);
+    // send current
+    can_send_current();
 }
 
 void DEBUG_send_cell_voltage(){
@@ -60,8 +75,7 @@ void DEBUG_send_cell_voltage(){
     for (node = 0; node< N_OF_NODE; node++){
         cell = 0;
         for (cell = 0;cell<14;cell++){
-            can_send_volt(cell,
-				node,
+            can_send_volt((node<<8 | cell),
 				bat_pack.nodes[node]->cells[cell]->voltage,
 				bat_pack.voltage);
             CyDelay(1);
@@ -74,11 +88,11 @@ void DEBUG_send_temp(){
     for (node = 0; node< N_OF_NODE; node++){
         temp = 0;
         for (temp = 0;temp<10;temp++){
-            can_send_temp(temp,
-				node,
-				bat_pack.nodes[node]->temps[temp]->temp_c,
-				bat_pack.nodes[node]->temps[temp]->temp_raw,
-                bat_pack.HI_temp_c);
+ //           can_send_temp(temp,
+//				node,
+//				bat_pack.nodes[node]->temps[temp]->temp_c,
+//				bat_pack.nodes[node]->temps[temp]->temp_raw,
+  //              bat_pack.HI_temp_c);
             CyDelay(1);
         }
     }
@@ -89,11 +103,11 @@ void DEBUG_send_current(){
     for (node = 0; node< N_OF_NODE; node++){
         temp = 0;
         for (temp = 0;temp<10;temp++){
-            can_send_temp(temp,
-				node,
-				bat_pack.nodes[node]->temps[temp]->temp_c,
-				bat_pack.nodes[node]->temps[temp]->temp_raw,
-                bat_pack.HI_temp_c);
+//            can_send_temp(temp,
+//				node,
+//				bat_pack.nodes[node]->temps[temp]->temp_c,
+//				bat_pack.nodes[node]->temps[temp]->temp_raw,
+  //              bat_pack.HI_temp_c);
             CyDelay(1);
         }
     }
@@ -103,9 +117,11 @@ void DEBUG_send_current(){
 void process_failure_helper(BAT_ERR_t err){
 	switch(err.err){
 		case CELL_VOLT_OVER:
+        	can_send_volt(((err.bad_node<<8) | err.bad_cell),
+			    bat_pack.nodes[err.bad_node]->cells[err.bad_cell]->voltage,
+				bat_pack.voltage);
 		case CELL_VOLT_UNDER:
-			can_send_volt(err.bad_cell,
-				err.bad_node,
+			can_send_volt(((err.bad_node<<8) | err.bad_cell),
 				bat_pack.nodes[err.bad_node]->cells[err.bad_cell]->voltage,
 				bat_pack.voltage);
 			break;
@@ -160,9 +176,12 @@ int main(void)
                 #endif
                 
 				// Initialize
+                SOC_Store_Start();
+                SOC_Timer_Start();
 				bms_init();
 				mypack_init();
-				//current_init();
+				current_init();
+
 			    //monitor_init();
 			    
 			    //enable global interrupt
@@ -184,21 +203,28 @@ int main(void)
 				check_stack_fuse(); // TODO: check if stacks are disconnected
 				get_cell_temp();// TODO Get temperature
                 
-				//get_current(); // TODO get current reading from sensor
+				get_current(); // TODO get current reading from sensor
 				//bat_soc = get_soc(); // TODO calculate SOC()
 				// because it is normal mode, just set a median length current reading interval
-				set_current_interval(100);
-				system_interval = 1000;
+				//bat_health_check();
+                update_soc();
+                
+                set_current_interval(100);
+				system_interval = 500;
 
+                
                 
 				if (bat_pack.health == FAULT){
 					bms_status = BMS_FAULT;
 				}
+                
+                /*
 				if (bat_pack.status && CHARGEMODE){
 					bms_status = BMS_CHARGEMODE;
 				}else if(RACING_FLAG){
 					bms_status = BMS_RACINGMODE;
 				}
+                */
                 
 				break;
 
@@ -211,13 +237,16 @@ int main(void)
 				check_stack_fuse(); // TODO: check if stacks are disconnected
 				get_cell_temp();// TODO Get temperature
 				get_current(); // TODO get current reading from sensor
-				bat_soc = get_soc(); // TODO calculate SOC()
+				update_soc(); // TODO calculate SOC()
 				// because it is normal mode, just set a median length current reading interval
-				set_current_interval(100);
-				system_interval = 5000;
+				bat_health_check();
+                set_current_interval(100);
+				system_interval = 1000;
 
 
-
+                if (bat_pack.health == FAULT){
+					bms_status = BMS_FAULT;
+				}
 				if (!(bat_pack.status || CHARGEMODE)){
 					bms_status = CHARGEMODE;
 				}
@@ -233,7 +262,8 @@ int main(void)
 				get_cell_temp();// TODO Get temperature
 				get_current(); // TODO get current reading from sensor
 				bat_soc = get_soc(); // TODO calculate SOC()
-
+                update_soc();
+                bat_health_check();
 				system_interval = 1000;
 				set_current_interval(1);
 
@@ -249,6 +279,10 @@ int main(void)
 
 			case BMS_SLEEPMODE:
 				OK_SIG_Write(1);
+                bat_health_check();
+                if (bat_pack.health == FAULT){
+					bms_status = BMS_FAULT;
+				}
 				break;
 
 			case BMS_FAULT:

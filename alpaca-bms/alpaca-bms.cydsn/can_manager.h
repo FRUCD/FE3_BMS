@@ -28,25 +28,29 @@ typedef enum{
     
     
     
-void can_send_temp(uint8_t temp_index,
-    uint8_t temp_node,
-    uint16_t temp_c,
-    uint32_t temp_raw,
-    uint8_t HI_temp_c);
+void can_send_temp(uint8_t high_temp0,
+    uint8_t high_temp1,
+    uint8_t high_temp2,
+    uint8_t high_temp3,
+    uint8_t high_temp4,
+    uint8_t high_temp5,
+    uint8_t high_tempNode,
+    uint8_t high_temp);
 
-void can_send_volt(uint8_t cell_index,
-    uint8_t cell_node,
-    uint16_t cell_voltage,
+void can_send_volt(
+    uint16_t min_voltage,
+    uint16_t max_voltage,
     uint32_t pack_voltage);
 
 void can_send_current();
 
-void can_send_status(uint8_t SOC_P,
-                    uint8_t AH,
+void can_send_status(uint8_t name,
+                    uint8_t SOC_P,
                     BMS_STATUS status,
                     uint8_t stack,
                     uint8_t cell,
                     uint16_t value16);
+
 uint8_t can_test_send();
 void can_init();
 

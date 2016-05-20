@@ -15,23 +15,23 @@ The datatype consists of three bytes:
 
 
 
-void can_send_temp(uint8_t temp_index,
-    uint8_t temp_node,
-    uint16_t temp_c,
-    uint32_t temp_raw,
-    uint8_t HI_temp_c)
+void can_send_temp(uint8_t high_temp0,
+    uint8_t high_temp1,
+    uint8_t high_temp2,
+    uint8_t high_temp3,
+    uint8_t high_temp4,
+    uint8_t high_temp5,
+    uint8_t high_tempNode,
+    uint8_t high_temp)
 {
-    can_buffer[0] = 0xff & temp_index;
-
-    can_buffer[1] = 0XFF & temp_node;
-
-    can_buffer[2] = temp_c;
-    can_buffer[3] = 0;
-
-    can_buffer[4] = HI8(temp_raw);
-    can_buffer[5] = LO8(temp_raw);
-    can_buffer[6] = 0x00;
-    can_buffer[7] = 0xFF & (HI_temp_c);
+    can_buffer[0] = (high_temp0/10)<<4 | (high_temp0%10);
+    can_buffer[1] = (high_temp1/10)<<4 | (high_temp1%10);
+    can_buffer[2] = (high_temp2/10)<<4 | (high_temp2%10);
+    can_buffer[3] = (high_temp3/10)<<4 | (high_temp3%10);
+    can_buffer[4] = (high_temp4/10)<<4 | (high_temp4%10);
+    can_buffer[5] = (high_temp5/10)<<4 | (high_temp5%10);
+    can_buffer[6] = 0xff & high_tempNode;
+    can_buffer[7] = (high_temp/10)<<4 | (high_temp%10);
             
 	CAN_1_SendMsgtemp();
     CyDelay(5);
@@ -42,18 +42,17 @@ void can_send_temp(uint8_t temp_index,
 
 
 
-void can_send_volt(uint8_t cell_index,
-    uint8_t cell_node,
-    uint16_t cell_voltage,
+void can_send_volt(
+    uint16_t min_voltage,
+    uint16_t max_voltage,
     uint32_t pack_voltage)
 {
-    
-        can_buffer[0] = 0xff & cell_index;
+    //max and min voltage means the voltage of single cell
+        can_buffer[0] = HI8(min_voltage);
+        can_buffer[1] = LO8(min_voltage);;
 
-        can_buffer[1] = 0XFF & cell_node;
-
-        can_buffer[2] = HI8(cell_voltage);
-        can_buffer[3] = LO8(cell_voltage);
+        can_buffer[2] = HI8(max_voltage);
+        can_buffer[3] = LO8(max_voltage);
 
         can_buffer[4] = 0xFF & (pack_voltage >> 24);
         can_buffer[5] = 0xFF & (pack_voltage >> 16);
@@ -71,21 +70,20 @@ void can_send_volt(uint8_t cell_index,
 void can_send_current()
 {
     int16_t battery_current = bat_pack.current;
-	can_buffer[0] = 0xFF & (battery_current>>8); // upper byte
-	can_buffer[1] = 0xFF & battery_current; // lower byte
-    can_buffer[2] = 0x00; 
+	can_buffer[0] = (battery_current<0 ? 1:0);
+	can_buffer[1] = 0xFF & (uint16)(abs(battery_current)>>8); // upper byte
+    can_buffer[2] = 0xFF & abs(battery_current); // lower byte
     can_buffer[3] = 0x00; 
     can_buffer[4] = 0x00; 
-    can_buffer[5] = 0x00; 
-    can_buffer[6] = 0x00; 
-    can_buffer[7] = 0x00; 
+    can_buffer[5] = (battery_current<0 ? 1:0); 
+    can_buffer[6] = 0xff & (((abs(battery_current)/1000%10)<<4) | (0x0f & (abs(battery_current)/100%10))); 
+    can_buffer[7] = 0xff & (((uint8)abs(battery_current)/10%10) << 4 | abs(battery_current)%10); 
 	CAN_1_SendMsgcurrent();
 } // can_send_current()
 
 
-
-void can_send_status(uint8_t SOC_P,
-                    uint8_t AH,
+void can_send_status(uint8_t name,
+                    uint8_t SOC_P,
                     BMS_STATUS status,
                     uint8_t stack,
                     uint8_t cell,
@@ -95,8 +93,8 @@ void can_send_status(uint8_t SOC_P,
 //16 BMS Status bits (error flags)
 //16 Number of charge cycles
 //16 Pack balance (delta) mV
-    can_buffer[0] = SOC_P;
-    can_buffer[1] = AH;
+    can_buffer[0] = name;
+    can_buffer[1] = (uint8_t)(SOC_P/10)<<4 | (uint8_t)(SOC_P%10);
     can_buffer[2] = HI8(status);
     can_buffer[3] = LO8(status);
     can_buffer[4] = stack & 0xFF;

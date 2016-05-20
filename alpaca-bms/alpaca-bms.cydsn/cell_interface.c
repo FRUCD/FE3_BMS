@@ -78,6 +78,7 @@ void mypack_init(){
         bat_temp[temp].temp_raw = (uint16_t)temp;
         bat_temp[temp].bad_counter = 0;
         bat_temp[temp].bad_type = 0;
+        
         if ((temp%10) < 5){
             bat_temp[temp].type = THERM_BOARD;
         }
@@ -118,6 +119,17 @@ void mypack_init(){
         bat_pack.nodes[node] = &(bat_node[node]);
     }
     
+    // get SOC
+    uint32_t temp_SOC = SOC_Store_ReadByte(0x00)<<24;
+    temp_SOC |= SOC_Store_ReadByte(0x01)<<16;
+    temp_SOC |= SOC_Store_ReadByte(0x02)<<8;
+    temp_SOC |= SOC_Store_ReadByte(0x03)<<16;
+    
+    if(temp_SOC<SOC_SOC_LOW || temp_SOC > SOC_FULL){
+        temp_SOC = SOC_NOMIAL;
+    }
+    bat_pack.current_charge = temp_SOC;
+    
     //give the pack non-0 value help debuging CAN
     bat_pack.voltage = 12;
     bat_pack.current = 34;
@@ -127,6 +139,10 @@ void mypack_init(){
     bat_pack.SOC_cali_flag =0;
     bat_pack.HI_temp_c = 0;
     bat_pack.HI_temp_raw = 0;
+    bat_pack.HI_voltage = 0;
+    bat_pack.LO_voltage = 0;
+    bat_pack.time_stamp = 0;
+    bat_pack.SOC_percent = 0;
     
     
 }
@@ -220,6 +236,7 @@ uint8_t get_cell_temp(){
         LCD_Position(0u,10u);
         LCD_PrintString("ERROR");
         #endif
+        bat_pack.health = FAULT;
         return 1;
     }
 
@@ -339,6 +356,7 @@ void check_volt(){
     uint8_t cell = 0;
     uint8_t node = 0;
     uint16_t voltage16 = 0;
+
     // update each cell
     for (cell = 0; cell<N_OF_CELL; cell++){
         voltage16 = bat_cell[cell].voltage;
@@ -380,6 +398,22 @@ void check_volt(){
             bat_err_add(CELL_VOLT_UNDER, bat_node[node].under_voltage, node);
         }
     }
+    
+    // find the max voltage and mini vltage
+    uint16_t max_voltage = bat_cell[0].voltage;
+    uint16_t min_voltage = bat_cell[0].voltage;
+    cell=0;
+    for(cell=0;cell<N_OF_CELL;cell++){
+        if (max_voltage<bat_cell[cell].voltage){
+            max_voltage = bat_cell[cell].voltage;
+        }
+        if(min_voltage>bat_cell[cell].voltage){
+            min_voltage = bat_cell[cell].voltage;
+        }
+    }
+    bat_pack.HI_voltage = max_voltage;
+    bat_pack.LO_voltage = min_voltage;
+    
         
 }
 
@@ -401,13 +435,12 @@ void update_temp(uint16_t aux_codes[TOTAL_IC][6]){
             bat_temp[temp].temp_raw = aux_codes[ic][i];
             bat_temp[temp].temp_ref = aux_codes[ic][5];
             bat_temp[temp].temp_c = (uint8_t)temp_transfer(aux_codes[ic][i], aux_codes[ic][5]);
-            if (bat_temp[temp].temp_c > bat_pack.HI_temp_c){
-                bat_pack.HI_temp_c = bat_temp[temp].temp_c;
-                bat_pack.HI_temp_raw = bat_temp[temp].temp_raw;
-            }
+
             temp++;
         }
     }
+    
+    
 
 }
 
@@ -427,11 +460,15 @@ void check_temp(){
     
     bat_temp[27].temp_raw = bat_temp[26].temp_raw;
     bat_temp[27].temp_c = bat_temp[26].temp_c;
+    
+    bat_temp[51].temp_raw = bat_temp[50].temp_raw;
+    bat_temp[51].temp_c = bat_temp[50].temp_c;
+    
+    bat_temp[57].temp_raw = bat_temp[56].temp_raw;
+    bat_temp[57].temp_c = bat_temp[56].temp_c;
 
     // check temp
     for (node = 0; node<N_OF_TEMP; node++){
-        
-        
         temp_c = bat_temp[node].temp_c;
         if (temp_c > (uint8_t)CRITICAL_TEMP_H){
             //if over temperature
@@ -461,7 +498,34 @@ void check_temp(){
             }
         }
     }
+    
+    // update temperature highest to each node
+    node = 0;
+    uint8_t temp_temp=0;
+    uint8_t i=0;
+    for (node=0;node<N_OF_NODE;node++){
+        temp_temp = bat_pack.nodes[node]->temps[0]->temp_c;
+        bat_pack.nodes[node]->high_temp = temp_temp;
+        for (i=1;i<10;i++){
+            if (temp_temp < bat_pack.nodes[node]->temps[i]->temp_c){
+                temp_temp = bat_pack.nodes[node]->temps[i]->temp_c;
+                bat_pack.nodes[node]->high_temp = temp_temp;
+            }
+        }
+    }
 
+    // Update the battery_pack highest temperature
+    bat_pack.HI_temp_c = bat_temp[0].temp_c;
+    bat_pack.HI_temp_raw = bat_temp[0].temp_raw;
+    for (i=1;i<N_OF_TEMP;i++){
+        if (bat_temp[i].temp_c > bat_pack.HI_temp_c){
+            bat_pack.HI_temp_c = bat_temp[i].temp_c;
+            bat_pack.HI_temp_raw = bat_temp[i].temp_raw;
+            bat_pack.HI_temp_node = i/10;
+        }    
+    }
+    
+    
     // update pack of cell voltage error
     for (node = 0; node < N_OF_NODE; node++){
         if (bat_pack.nodes[node]->over_temp != 0){
@@ -595,12 +659,16 @@ uint8_t temp_transfer(uint16_t raw, uint16_t ref){
     //translate raw reading to C temperature
     //B25=3900
     //B75=3936
-    float vcc=ref/10000.0;
-    float V=((float)raw*vcc/0xffff);
-    float R=10000.0*V/(vcc-V);
-    float R0=10000.0;
-    float oneOverT=(1/298.15)+(1/3936.0)*(log(R/R0));
-    return ((uint8_t)(floor((1/oneOverT)-273.15)));
+    if (raw==65535){
+        //bad reading
+        return 0;
+    }
+    float v = 3.0*(1.0*raw/(ref*1.0));
+    float R=1.0*(5.0*10000.0)/(1.0*v)-10000.0;
+    float beta = 3950.0;
+    float A = 0.01764;
+    float T = beta/log(R/A)-273.16;
+    return (uint8_t)ceil(T);
 }
 //void balance_cells(){}// balance_cells()
 
@@ -654,6 +722,17 @@ BAT_SOC_t get_soc()
 } // get_soc()
 
 void update_soc(){
+    // attention!! timer is counting down!
+    if (bat_pack.time_stamp==0){
+        bat_pack.time_stamp = SOC_Timer_ReadCounter();
+        deltaTime = 0;
+    }else{
+        deltaTime = (SOC_Timer_ReadCounter()<bat_pack.time_stamp ? 
+            bat_pack.time_stamp - SOC_Timer_ReadCounter() :
+            bat_pack.time_stamp+(65535-SOC_Timer_ReadCounter()));
+        bat_pack.time_stamp = SOC_Timer_ReadCounter();
+    }
+    
     // calibrate SOC when voltage reach linear region.
     // if its high SOC
     if ((bat_pack.SOC_cali_flag==0) && (bat_pack.voltage >= SOC_CALI_HIGH)){
@@ -676,9 +755,42 @@ void update_soc(){
         bat_pack.status |= FULL;
     }
 
-    uint32_t deltaCharge = deltaTime*get_current();   //get_current returned mA
+    float deltaCharge = 1.0*deltaTime*bat_pack.current*100.0/1000.0;   //get_current returned mA
     // deltaTime = (getTime) - lastTime;
-    bat_pack.current_charge = bat_pack.current_charge - deltaCharge;
+    if (deltaCharge<0){
+        //charging
+        bat_pack.current_charge = bat_pack.current_charge + (uint32_t)abs(floor(deltaCharge));
+    }else{
+        bat_pack.current_charge = bat_pack.current_charge - (uint32_t)abs(floor(deltaCharge));
+    }
+    
+    bat_pack.SOC_percent = (uint8_t)floor(100.0*bat_pack.current_charge/SOC_SOC_HIGH);
+    
+    // write current charge back to EEPROM
+    _SOC_log();
+  
+    
     return;
 }
 
+
+uint8_t bat_health_check(){
+    if ((bat_pack.status | COM_FAILURE) ||
+    (bat_pack.status | STACK_FUSE_BROKEN) ||
+    (bat_pack.status | ISO_FAULT) ||
+    (bat_pack.status | IMBALANCE)){
+        bat_pack.health = FAULT;
+        return 1;
+    }else{
+        return 0;
+    }   
+}
+
+void _SOC_log(){
+    uint32_t temp_SOC = bat_pack.current_charge;
+    SOC_Store_WriteByte((uint8_t)(0xff&temp_SOC>>24), 0x00);
+    SOC_Store_WriteByte((uint8_t)(0xff&temp_SOC>>16), 0x01);
+    SOC_Store_WriteByte((uint8_t)(0xff&temp_SOC>>8), 0x02);
+    SOC_Store_WriteByte((uint8_t)(0xff&temp_SOC), 0x03);
+    return;
+}

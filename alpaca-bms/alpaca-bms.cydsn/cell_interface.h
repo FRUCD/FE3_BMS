@@ -25,17 +25,18 @@
     
     #define CELL_ENABLE (0x1cf)
     #define OVER_VOLTAGE (4200u)
-    #define UNDER_VOLTAGE (2000u)
-    #define STACK_VOLT_DIFF_LIMIT (30000u)
-    #define CRITICAL_TEMP_L (2000u)          //0.2V
-    #define CRITICAL_TEMP_H (10213u)             //1.0213V  10213
+    #define UNDER_VOLTAGE (2200u)
+    #define STACK_VOLT_DIFF_LIMIT (3000u)   //3 volt
+    #define CRITICAL_TEMP_L (10u)          // 10 C
+    #define CRITICAL_TEMP_H (65u)             //65 C
     #define BAD_THERM_LIMIT (8u)
-    #define SOC_CALI_HIGH (110000u)     //High cali point at 110V
-    #define SOC_SOC_HIGH  (60000u)      //manually set it in mAh
+    #define SOC_NOMIAL      (50000*3600u)    //nomial SOC before calibration
+    #define SOC_CALI_HIGH (106000u)     //High cali point at 106V
+    #define SOC_SOC_HIGH  (60000*3600u)      //manually set it in mAh
     #define SOC_CALI_LOW (80000u)     //Low Cali point at 80V
-    #define SOC_SOC_LOW   (10000u)      //manually set it in mAh
-    #define SOC_FULL_CAP (75000u)     //let's say, 75,000mAh
-    #define SOC_FULL      (115000u)   //when voltage reaches 115V, consider it full
+    #define SOC_SOC_LOW   (10000*3600u)      //manually set it in mAh
+    #define SOC_FULL_CAP (75000*3600u)     //let's say, 75,000mAh
+    #define SOC_FULL      (110000u)   //when voltage reaches 115V, consider it full
     
     #define N_OF_CELL (84u)
     #define N_OF_TEMP (60u)
@@ -110,6 +111,7 @@ typedef struct
 {
   BAT_CELL_t *cells[14];
   BAT_TEMP_t *temps[10];
+  uint8 high_temp;
   uint16_t over_temp;
   uint16_t under_temp;
   uint16_t over_voltage;
@@ -128,14 +130,19 @@ typedef struct
   BAT_STACK_t *stacks[3];
   BAT_NODE_t *nodes[6];
   uint32_t voltage;
-  uint16_t current;
+  int16_t current;
   uint8_t fuse_fault;
   uint16_t status;
   BAT_HEALTH health;
   uint32_t current_charge;
+  uint8_t SOC_percent;
   uint8_t SOC_cali_flag;
   uint8_t HI_temp_c;
+  uint8_t HI_temp_node;
   uint8_t HI_temp_raw;
+  uint16_t HI_voltage;
+  uint16_t LO_voltage;
+  uint16_t time_stamp;
 }BAT_PACK_t;
 
 typedef struct 
@@ -299,5 +306,8 @@ BAT_SOC_t get_soc();
  * @return NULL.
  */
 void update_soc();
+
+uint8_t bat_health_check();
+void _SOC_log();
 
 #endif // CELL_INTERFACE_H
