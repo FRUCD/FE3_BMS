@@ -664,7 +664,7 @@ uint8_t temp_transfer(uint16_t raw, uint16_t ref){
         return 0;
     }
     float v = 3.0*(1.0*raw/(ref*1.0));
-    float R=1.0*(5.0*10000.0)/(1.0*v)-10000.0;
+    float R=1.0*v*(2000.0-v*400.0);
     float beta = 3950.0;
     float A = 0.01764;
     float T = beta/log(R/A)-273.16;
@@ -793,4 +793,37 @@ void _SOC_log(){
     SOC_Store_WriteByte((uint8_t)(0xff&temp_SOC>>8), 0x02);
     SOC_Store_WriteByte((uint8_t)(0xff&temp_SOC), 0x03);
     return;
+}
+
+
+void bat_balance(){
+    uint8_t ic=0;
+    uint8_t cell=0;
+    uint8_t i=0;
+    uint8_t temp_cfg[TOTAL_IC][6];
+    uint16_t low_voltage = bat_pack.LO_voltage <= UNDER_VOLTAGE ? UNDER_VOLTAGE :bat_pack.LO_voltage;
+    
+    for (ic=0;ic<TOTAL_IC;ic++){
+        for (i=0;i<6;i++){
+            temp_cfg[ic][i] = tx_cfg[ic][i];
+        }
+    }
+    
+    ic=0;
+    for (ic=0;ic<TOTAL_IC;ic++){
+        for (cell=0;cell<12;cell++){
+            if ((CELL_ENABLE & (0x1<<cell)) && ((cell_codes[ic][cell]/10)-low_voltage > 30)){
+                // if this cell is 30mV or more higher than the lowest cell
+                if (cell>7){
+                    temp_cfg[ic][4] |= (0x1<<cell);
+                }else{
+                    temp_cfg[ic][5] |= (0x1<<(cell-8));
+                }
+            }
+        }
+    }
+    
+    LTC6804_wrcfg(TOTAL_IC, temp_cfg);
+    
+    
 }

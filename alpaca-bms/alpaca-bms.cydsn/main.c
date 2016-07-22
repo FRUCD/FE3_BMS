@@ -208,6 +208,7 @@ int main(void)
 				// because it is normal mode, just set a median length current reading interval
 				//bat_health_check();
                 update_soc();
+                bat_balance();
                 
                 set_current_interval(100);
 				system_interval = 500;

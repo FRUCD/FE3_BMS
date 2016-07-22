@@ -309,5 +309,6 @@ void update_soc();
 
 uint8_t bat_health_check();
 void _SOC_log();
+void bat_balance();
 
 #endif // CELL_INTERFACE_H
