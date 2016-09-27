@@ -123,7 +123,7 @@ void mypack_init(){
     uint32_t temp_SOC = SOC_Store_ReadByte(0x00)<<24;
     temp_SOC |= SOC_Store_ReadByte(0x01)<<16;
     temp_SOC |= SOC_Store_ReadByte(0x02)<<8;
-    temp_SOC |= SOC_Store_ReadByte(0x03)<<16;
+    temp_SOC |= SOC_Store_ReadByte(0x03);
     
     if(temp_SOC<SOC_SOC_LOW || temp_SOC > SOC_FULL){
         temp_SOC = SOC_NOMIAL;
@@ -652,19 +652,21 @@ void bat_err_add(uint16_t err, uint8_t bad_cell, uint8_t bad_node){
 }
 
 
-uint8_t temp_transfer(uint16_t raw, uint16_t ref){
+uint8_t temp_transfer(uint16_t in_raw, uint16_t ref){
     //using 1/T = 1/T0 +(1/B)(R/R0)
     //V = raw/0xffff*5
     //R is R=10K(5-V)/V;
     //translate raw reading to C temperature
     //B25=3900
     //B75=3936
-    if (raw==65535){
+    if (in_raw==65535){
         //bad reading
         return 0;
     }
+    uint16_t raw = in_raw;
+    raw=raw+1;
     float v = 3.0*(1.0*raw/(ref*1.0));
-    float R=1.0*v*(2000.0-v*400.0);
+    float R=(1.0*10000.0*v/5)/(1-v/5.0);
     float beta = 3950.0;
     float A = 0.01764;
     float T = beta/log(R/A)-273.16;
@@ -809,12 +811,11 @@ void bat_balance(){
         }
     }
     
-    ic=0;
     for (ic=0;ic<TOTAL_IC;ic++){
         for (cell=0;cell<12;cell++){
             if ((CELL_ENABLE & (0x1<<cell)) && ((cell_codes[ic][cell]/10)-low_voltage > 30)){
                 // if this cell is 30mV or more higher than the lowest cell
-                if (cell>7){
+                if (cell<7){
                     temp_cfg[ic][4] |= (0x1<<cell);
                 }else{
                     temp_cfg[ic][5] |= (0x1<<(cell-8));
