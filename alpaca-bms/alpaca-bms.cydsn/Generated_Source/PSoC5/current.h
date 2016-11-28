@@ -1,14 +1,14 @@
 /*******************************************************************************
 * File Name: current.h  
-* Version 2.10
+* Version 2.20
 *
 * Description:
-*  This file containts Control Register function prototypes and register defines
+*  This file contains Pin function prototypes and register defines
 *
 * Note:
 *
 ********************************************************************************
-* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2015, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions, 
 * disclaimers, and limitations in the end user license agreement accompanying 
 * the software package with which this file was provided.
@@ -22,12 +22,6 @@
 #include "cypins.h"
 #include "current_aliases.h"
 
-/* Check to see if required defines such as CY_PSOC5A are available */
-/* They are defined starting with cy_boot v3.0 */
-#if !defined (CY_PSOC5A)
-    #error Component cy_pins_v2_10 requires cy_boot v3.0 or later
-#endif /* (CY_PSOC5A) */
-
 /* APIs are not generated for P15[7:6] */
 #if !(CY_PSOC5A &&\
 	 current__PORT == 15 && ((current__MASK & 0xC0) != 0))
@@ -37,31 +31,64 @@
 *        Function Prototypes             
 ***************************************/    
 
-void    current_Write(uint8 value) ;
-void    current_SetDriveMode(uint8 mode) ;
-uint8   current_ReadDataReg(void) ;
-uint8   current_Read(void) ;
-uint8   current_ClearInterrupt(void) ;
-
+/**
+* \addtogroup group_general
+* @{
+*/
+void    current_Write(uint8 value);
+void    current_SetDriveMode(uint8 mode);
+uint8   current_ReadDataReg(void);
+uint8   current_Read(void);
+void    current_SetInterruptMode(uint16 position, uint16 mode);
+uint8   current_ClearInterrupt(void);
+/** @} general */
 
 /***************************************
 *           API Constants        
 ***************************************/
-
-/* Drive Modes */
-#define current_DM_ALG_HIZ         PIN_DM_ALG_HIZ
-#define current_DM_DIG_HIZ         PIN_DM_DIG_HIZ
-#define current_DM_RES_UP          PIN_DM_RES_UP
-#define current_DM_RES_DWN         PIN_DM_RES_DWN
-#define current_DM_OD_LO           PIN_DM_OD_LO
-#define current_DM_OD_HI           PIN_DM_OD_HI
-#define current_DM_STRONG          PIN_DM_STRONG
-#define current_DM_RES_UPDWN       PIN_DM_RES_UPDWN
-
+/**
+* \addtogroup group_constants
+* @{
+*/
+    /** \addtogroup driveMode Drive mode constants
+     * \brief Constants to be passed as "mode" parameter in the current_SetDriveMode() function.
+     *  @{
+     */
+        #define current_DM_ALG_HIZ         PIN_DM_ALG_HIZ
+        #define current_DM_DIG_HIZ         PIN_DM_DIG_HIZ
+        #define current_DM_RES_UP          PIN_DM_RES_UP
+        #define current_DM_RES_DWN         PIN_DM_RES_DWN
+        #define current_DM_OD_LO           PIN_DM_OD_LO
+        #define current_DM_OD_HI           PIN_DM_OD_HI
+        #define current_DM_STRONG          PIN_DM_STRONG
+        #define current_DM_RES_UPDWN       PIN_DM_RES_UPDWN
+    /** @} driveMode */
+/** @} group_constants */
+    
 /* Digital Port Constants */
 #define current_MASK               current__MASK
 #define current_SHIFT              current__SHIFT
 #define current_WIDTH              1u
+
+/* Interrupt constants */
+#if defined(current__INTSTAT)
+/**
+* \addtogroup group_constants
+* @{
+*/
+    /** \addtogroup intrMode Interrupt constants
+     * \brief Constants to be passed as "mode" parameter in current_SetInterruptMode() function.
+     *  @{
+     */
+        #define current_INTR_NONE      (uint16)(0x0000u)
+        #define current_INTR_RISING    (uint16)(0x0001u)
+        #define current_INTR_FALLING   (uint16)(0x0002u)
+        #define current_INTR_BOTH      (uint16)(0x0003u) 
+    /** @} intrMode */
+/** @} group_constants */
+
+    #define current_INTR_MASK      (0x01u) 
+#endif /* (current__INTSTAT) */
 
 
 /***************************************
@@ -114,13 +141,21 @@ uint8   current_ClearInterrupt(void) ;
 /* Sync Output Enable Registers */
 #define current_PRTDSI__SYNC_OUT       (* (reg8 *) current__PRTDSI__SYNC_OUT) 
 
+/* SIO registers */
+#if defined(current__SIO_CFG)
+    #define current_SIO_HYST_EN        (* (reg8 *) current__SIO_HYST_EN)
+    #define current_SIO_REG_HIFREQ     (* (reg8 *) current__SIO_REG_HIFREQ)
+    #define current_SIO_CFG            (* (reg8 *) current__SIO_CFG)
+    #define current_SIO_DIFF           (* (reg8 *) current__SIO_DIFF)
+#endif /* (current__SIO_CFG) */
 
-#if defined(current__INTSTAT)  /* Interrupt Registers */
-
-    #define current_INTSTAT                (* (reg8 *) current__INTSTAT)
-    #define current_SNAP                   (* (reg8 *) current__SNAP)
-
-#endif /* Interrupt Registers */
+/* Interrupt Registers */
+#if defined(current__INTSTAT)
+    #define current_INTSTAT            (* (reg8 *) current__INTSTAT)
+    #define current_SNAP               (* (reg8 *) current__SNAP)
+    
+	#define current_0_INTTYPE_REG 		(* (reg8 *) current__0__INTTYPE)
+#endif /* (current__INTSTAT) */
 
 #endif /* CY_PSOC5A... */
 

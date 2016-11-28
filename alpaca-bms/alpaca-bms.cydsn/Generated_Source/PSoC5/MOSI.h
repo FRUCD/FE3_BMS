@@ -1,14 +1,14 @@
 /*******************************************************************************
 * File Name: MOSI.h  
-* Version 2.10
+* Version 2.20
 *
 * Description:
-*  This file containts Control Register function prototypes and register defines
+*  This file contains Pin function prototypes and register defines
 *
 * Note:
 *
 ********************************************************************************
-* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2015, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions, 
 * disclaimers, and limitations in the end user license agreement accompanying 
 * the software package with which this file was provided.
@@ -22,12 +22,6 @@
 #include "cypins.h"
 #include "MOSI_aliases.h"
 
-/* Check to see if required defines such as CY_PSOC5A are available */
-/* They are defined starting with cy_boot v3.0 */
-#if !defined (CY_PSOC5A)
-    #error Component cy_pins_v2_10 requires cy_boot v3.0 or later
-#endif /* (CY_PSOC5A) */
-
 /* APIs are not generated for P15[7:6] */
 #if !(CY_PSOC5A &&\
 	 MOSI__PORT == 15 && ((MOSI__MASK & 0xC0) != 0))
@@ -37,31 +31,64 @@
 *        Function Prototypes             
 ***************************************/    
 
-void    MOSI_Write(uint8 value) ;
-void    MOSI_SetDriveMode(uint8 mode) ;
-uint8   MOSI_ReadDataReg(void) ;
-uint8   MOSI_Read(void) ;
-uint8   MOSI_ClearInterrupt(void) ;
-
+/**
+* \addtogroup group_general
+* @{
+*/
+void    MOSI_Write(uint8 value);
+void    MOSI_SetDriveMode(uint8 mode);
+uint8   MOSI_ReadDataReg(void);
+uint8   MOSI_Read(void);
+void    MOSI_SetInterruptMode(uint16 position, uint16 mode);
+uint8   MOSI_ClearInterrupt(void);
+/** @} general */
 
 /***************************************
 *           API Constants        
 ***************************************/
-
-/* Drive Modes */
-#define MOSI_DM_ALG_HIZ         PIN_DM_ALG_HIZ
-#define MOSI_DM_DIG_HIZ         PIN_DM_DIG_HIZ
-#define MOSI_DM_RES_UP          PIN_DM_RES_UP
-#define MOSI_DM_RES_DWN         PIN_DM_RES_DWN
-#define MOSI_DM_OD_LO           PIN_DM_OD_LO
-#define MOSI_DM_OD_HI           PIN_DM_OD_HI
-#define MOSI_DM_STRONG          PIN_DM_STRONG
-#define MOSI_DM_RES_UPDWN       PIN_DM_RES_UPDWN
-
+/**
+* \addtogroup group_constants
+* @{
+*/
+    /** \addtogroup driveMode Drive mode constants
+     * \brief Constants to be passed as "mode" parameter in the MOSI_SetDriveMode() function.
+     *  @{
+     */
+        #define MOSI_DM_ALG_HIZ         PIN_DM_ALG_HIZ
+        #define MOSI_DM_DIG_HIZ         PIN_DM_DIG_HIZ
+        #define MOSI_DM_RES_UP          PIN_DM_RES_UP
+        #define MOSI_DM_RES_DWN         PIN_DM_RES_DWN
+        #define MOSI_DM_OD_LO           PIN_DM_OD_LO
+        #define MOSI_DM_OD_HI           PIN_DM_OD_HI
+        #define MOSI_DM_STRONG          PIN_DM_STRONG
+        #define MOSI_DM_RES_UPDWN       PIN_DM_RES_UPDWN
+    /** @} driveMode */
+/** @} group_constants */
+    
 /* Digital Port Constants */
 #define MOSI_MASK               MOSI__MASK
 #define MOSI_SHIFT              MOSI__SHIFT
 #define MOSI_WIDTH              1u
+
+/* Interrupt constants */
+#if defined(MOSI__INTSTAT)
+/**
+* \addtogroup group_constants
+* @{
+*/
+    /** \addtogroup intrMode Interrupt constants
+     * \brief Constants to be passed as "mode" parameter in MOSI_SetInterruptMode() function.
+     *  @{
+     */
+        #define MOSI_INTR_NONE      (uint16)(0x0000u)
+        #define MOSI_INTR_RISING    (uint16)(0x0001u)
+        #define MOSI_INTR_FALLING   (uint16)(0x0002u)
+        #define MOSI_INTR_BOTH      (uint16)(0x0003u) 
+    /** @} intrMode */
+/** @} group_constants */
+
+    #define MOSI_INTR_MASK      (0x01u) 
+#endif /* (MOSI__INTSTAT) */
 
 
 /***************************************
@@ -114,13 +141,21 @@ uint8   MOSI_ClearInterrupt(void) ;
 /* Sync Output Enable Registers */
 #define MOSI_PRTDSI__SYNC_OUT       (* (reg8 *) MOSI__PRTDSI__SYNC_OUT) 
 
+/* SIO registers */
+#if defined(MOSI__SIO_CFG)
+    #define MOSI_SIO_HYST_EN        (* (reg8 *) MOSI__SIO_HYST_EN)
+    #define MOSI_SIO_REG_HIFREQ     (* (reg8 *) MOSI__SIO_REG_HIFREQ)
+    #define MOSI_SIO_CFG            (* (reg8 *) MOSI__SIO_CFG)
+    #define MOSI_SIO_DIFF           (* (reg8 *) MOSI__SIO_DIFF)
+#endif /* (MOSI__SIO_CFG) */
 
-#if defined(MOSI__INTSTAT)  /* Interrupt Registers */
-
-    #define MOSI_INTSTAT                (* (reg8 *) MOSI__INTSTAT)
-    #define MOSI_SNAP                   (* (reg8 *) MOSI__SNAP)
-
-#endif /* Interrupt Registers */
+/* Interrupt Registers */
+#if defined(MOSI__INTSTAT)
+    #define MOSI_INTSTAT            (* (reg8 *) MOSI__INTSTAT)
+    #define MOSI_SNAP               (* (reg8 *) MOSI__SNAP)
+    
+	#define MOSI_0_INTTYPE_REG 		(* (reg8 *) MOSI__0__INTTYPE)
+#endif /* (MOSI__INTSTAT) */
 
 #endif /* CY_PSOC5A... */
 

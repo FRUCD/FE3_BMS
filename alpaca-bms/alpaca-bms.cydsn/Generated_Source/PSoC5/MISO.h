@@ -1,14 +1,14 @@
 /*******************************************************************************
 * File Name: MISO.h  
-* Version 2.10
+* Version 2.20
 *
 * Description:
-*  This file containts Control Register function prototypes and register defines
+*  This file contains Pin function prototypes and register defines
 *
 * Note:
 *
 ********************************************************************************
-* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2015, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions, 
 * disclaimers, and limitations in the end user license agreement accompanying 
 * the software package with which this file was provided.
@@ -22,12 +22,6 @@
 #include "cypins.h"
 #include "MISO_aliases.h"
 
-/* Check to see if required defines such as CY_PSOC5A are available */
-/* They are defined starting with cy_boot v3.0 */
-#if !defined (CY_PSOC5A)
-    #error Component cy_pins_v2_10 requires cy_boot v3.0 or later
-#endif /* (CY_PSOC5A) */
-
 /* APIs are not generated for P15[7:6] */
 #if !(CY_PSOC5A &&\
 	 MISO__PORT == 15 && ((MISO__MASK & 0xC0) != 0))
@@ -37,31 +31,64 @@
 *        Function Prototypes             
 ***************************************/    
 
-void    MISO_Write(uint8 value) ;
-void    MISO_SetDriveMode(uint8 mode) ;
-uint8   MISO_ReadDataReg(void) ;
-uint8   MISO_Read(void) ;
-uint8   MISO_ClearInterrupt(void) ;
-
+/**
+* \addtogroup group_general
+* @{
+*/
+void    MISO_Write(uint8 value);
+void    MISO_SetDriveMode(uint8 mode);
+uint8   MISO_ReadDataReg(void);
+uint8   MISO_Read(void);
+void    MISO_SetInterruptMode(uint16 position, uint16 mode);
+uint8   MISO_ClearInterrupt(void);
+/** @} general */
 
 /***************************************
 *           API Constants        
 ***************************************/
-
-/* Drive Modes */
-#define MISO_DM_ALG_HIZ         PIN_DM_ALG_HIZ
-#define MISO_DM_DIG_HIZ         PIN_DM_DIG_HIZ
-#define MISO_DM_RES_UP          PIN_DM_RES_UP
-#define MISO_DM_RES_DWN         PIN_DM_RES_DWN
-#define MISO_DM_OD_LO           PIN_DM_OD_LO
-#define MISO_DM_OD_HI           PIN_DM_OD_HI
-#define MISO_DM_STRONG          PIN_DM_STRONG
-#define MISO_DM_RES_UPDWN       PIN_DM_RES_UPDWN
-
+/**
+* \addtogroup group_constants
+* @{
+*/
+    /** \addtogroup driveMode Drive mode constants
+     * \brief Constants to be passed as "mode" parameter in the MISO_SetDriveMode() function.
+     *  @{
+     */
+        #define MISO_DM_ALG_HIZ         PIN_DM_ALG_HIZ
+        #define MISO_DM_DIG_HIZ         PIN_DM_DIG_HIZ
+        #define MISO_DM_RES_UP          PIN_DM_RES_UP
+        #define MISO_DM_RES_DWN         PIN_DM_RES_DWN
+        #define MISO_DM_OD_LO           PIN_DM_OD_LO
+        #define MISO_DM_OD_HI           PIN_DM_OD_HI
+        #define MISO_DM_STRONG          PIN_DM_STRONG
+        #define MISO_DM_RES_UPDWN       PIN_DM_RES_UPDWN
+    /** @} driveMode */
+/** @} group_constants */
+    
 /* Digital Port Constants */
 #define MISO_MASK               MISO__MASK
 #define MISO_SHIFT              MISO__SHIFT
 #define MISO_WIDTH              1u
+
+/* Interrupt constants */
+#if defined(MISO__INTSTAT)
+/**
+* \addtogroup group_constants
+* @{
+*/
+    /** \addtogroup intrMode Interrupt constants
+     * \brief Constants to be passed as "mode" parameter in MISO_SetInterruptMode() function.
+     *  @{
+     */
+        #define MISO_INTR_NONE      (uint16)(0x0000u)
+        #define MISO_INTR_RISING    (uint16)(0x0001u)
+        #define MISO_INTR_FALLING   (uint16)(0x0002u)
+        #define MISO_INTR_BOTH      (uint16)(0x0003u) 
+    /** @} intrMode */
+/** @} group_constants */
+
+    #define MISO_INTR_MASK      (0x01u) 
+#endif /* (MISO__INTSTAT) */
 
 
 /***************************************
@@ -114,13 +141,21 @@ uint8   MISO_ClearInterrupt(void) ;
 /* Sync Output Enable Registers */
 #define MISO_PRTDSI__SYNC_OUT       (* (reg8 *) MISO__PRTDSI__SYNC_OUT) 
 
+/* SIO registers */
+#if defined(MISO__SIO_CFG)
+    #define MISO_SIO_HYST_EN        (* (reg8 *) MISO__SIO_HYST_EN)
+    #define MISO_SIO_REG_HIFREQ     (* (reg8 *) MISO__SIO_REG_HIFREQ)
+    #define MISO_SIO_CFG            (* (reg8 *) MISO__SIO_CFG)
+    #define MISO_SIO_DIFF           (* (reg8 *) MISO__SIO_DIFF)
+#endif /* (MISO__SIO_CFG) */
 
-#if defined(MISO__INTSTAT)  /* Interrupt Registers */
-
-    #define MISO_INTSTAT                (* (reg8 *) MISO__INTSTAT)
-    #define MISO_SNAP                   (* (reg8 *) MISO__SNAP)
-
-#endif /* Interrupt Registers */
+/* Interrupt Registers */
+#if defined(MISO__INTSTAT)
+    #define MISO_INTSTAT            (* (reg8 *) MISO__INTSTAT)
+    #define MISO_SNAP               (* (reg8 *) MISO__SNAP)
+    
+	#define MISO_0_INTTYPE_REG 		(* (reg8 *) MISO__0__INTTYPE)
+#endif /* (MISO__INTSTAT) */
 
 #endif /* CY_PSOC5A... */
 
