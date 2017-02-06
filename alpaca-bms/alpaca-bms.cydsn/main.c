@@ -195,7 +195,7 @@ int main(void)
 
 			case BMS_NORMAL:
 			    OK_SIG_Write(1);
-			    //check_cfg();  //CANNOT be finished, because 
+			    check_cfg();  //CANNOT be finished, because 
 				//check_cells();// TODO This function will be finished in get_cell_volt/check stack fuse
 		        get_cell_volt();// TODO Get voltage
                 //DEBUG_send_cell_voltage();
@@ -204,11 +204,14 @@ int main(void)
 				get_cell_temp();// TODO Get temperature
                 
 				get_current(); // TODO get current reading from sensor
-				//bat_soc = get_soc(); // TODO calculate SOC()
+			    bat_soc = get_soc(); // TODO calculate SOC()
 				// because it is normal mode, just set a median length current reading interval
 				//bat_health_check();
                 update_soc();
-                bat_balance();
+                //bat_balance();
+                //bat_balance();
+                //DEBUG_balancing_on();
+                //DEBUG_balancing_on();
                 
                 set_current_interval(100);
 				system_interval = 500;

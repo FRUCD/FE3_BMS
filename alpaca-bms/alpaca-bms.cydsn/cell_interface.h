@@ -24,11 +24,11 @@
     #define BAD_FILTER_LIMIT (5u)
     
     #define CELL_ENABLE (0x1cf)
-    #define OVER_VOLTAGE (4200u)
-    #define UNDER_VOLTAGE (2200u)
+    #define OVER_VOLTAGE (4500u)
+    #define UNDER_VOLTAGE (00u)
     #define STACK_VOLT_DIFF_LIMIT (3000u)   //3 volt
-    #define CRITICAL_TEMP_L (10u)          // 10 C
-    #define CRITICAL_TEMP_H (65u)             //65 C
+    #define CRITICAL_TEMP_L (0u)          // 0 C
+    #define CRITICAL_TEMP_H (60u)             //65 C
     #define BAD_THERM_LIMIT (8u)
     #define SOC_NOMIAL      (50000*3600u)    //nomial SOC before calibration
     #define SOC_CALI_HIGH (106000u)     //High cali point at 106V
@@ -37,6 +37,7 @@
     #define SOC_SOC_LOW   (10000*3600u)      //manually set it in mAh
     #define SOC_FULL_CAP (75000*3600u)     //let's say, 75,000mAh
     #define SOC_FULL      (110000u)   //when voltage reaches 115V, consider it full
+    #define BALANCE_THRESHOLD (30u)
     
     #define N_OF_CELL (84u)
     #define N_OF_TEMP (60u)
@@ -45,7 +46,7 @@
 
     //#define DEBUG_LCD 0
 
-    #define OVER_TEMP (90u)             //now it just for debug purpose
+    #define OVER_TEMP (60u)             //now it just for debug purpose
     #define UNDER_TEMP (0u)
 
     #define THERM_CELL (0u)
@@ -310,5 +311,6 @@ void update_soc();
 uint8_t bat_health_check();
 void _SOC_log();
 void bat_balance();
+void DEBUG_balancing_on();
 
 #endif // CELL_INTERFACE_H

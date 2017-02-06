@@ -452,6 +452,8 @@ void check_temp(){
     
     // ignore the known broken thermistors
     //    if (node == 3 || node == 17 || node == 27){
+    
+/*  Tony's Old ones
     bat_temp[3].temp_raw = bat_temp[2].temp_raw;
     bat_temp[3].temp_c = bat_temp[2].temp_c;
     
@@ -466,22 +468,61 @@ void check_temp(){
     
     bat_temp[57].temp_raw = bat_temp[56].temp_raw;
     bat_temp[57].temp_c = bat_temp[56].temp_c;
+*/    
+    
+    /*
+    // Sirius's button cell test bench ignore
+    bat_temp[7].temp_raw = bat_temp[6].temp_raw;
+    bat_temp[7].temp_c = bat_temp[6].temp_c;
+    
+    bat_temp[11].temp_raw = bat_temp[10].temp_raw;
+    bat_temp[11].temp_c = bat_temp[10].temp_c;
+    
+    bat_temp[17].temp_raw = bat_temp[10].temp_raw;
+    bat_temp[17].temp_c = bat_temp[10].temp_c;
+    
+    bat_temp[23].temp_raw = bat_temp[22].temp_raw;
+    bat_temp[23].temp_c = bat_temp[22].temp_c;
+    */
+    
+    // 2/4/2016 Measurement on actual battery pack
+    // 0,7,20,21,27,30,33 are dead
+    bat_temp[0].temp_raw = bat_temp[1].temp_raw;
+    bat_temp[0].temp_c = bat_temp[1].temp_c;
+    
+    bat_temp[7].temp_raw = bat_temp[6].temp_raw;
+    bat_temp[7].temp_c = bat_temp[6].temp_c;
+    
+    bat_temp[20].temp_raw = bat_temp[22].temp_raw;
+    bat_temp[20].temp_c = bat_temp[22].temp_c;
+    
+    bat_temp[21].temp_raw = bat_temp[22].temp_raw;
+    bat_temp[21].temp_c = bat_temp[22].temp_c;
+    
+    bat_temp[27].temp_raw = bat_temp[28].temp_raw;
+    bat_temp[27].temp_c = bat_temp[28].temp_c;
 
+    bat_temp[30].temp_raw = bat_temp[31].temp_raw;
+    bat_temp[30].temp_c = bat_temp[31].temp_c;
+    
+    bat_temp[33].temp_raw = bat_temp[34].temp_raw;
+    bat_temp[33].temp_c = bat_temp[34].temp_c;
+    
     // check temp
     for (node = 0; node<N_OF_TEMP; node++){
         temp_c = bat_temp[node].temp_c;
         if (temp_c > (uint8_t)CRITICAL_TEMP_H){
             //if over temperature
-            bat_temp[temp].bad_counter++;
-            bat_temp[temp].bad_type = 1;
+            bat_temp[node].bad_counter++;
+            bat_temp[node].bad_type = 1;
         }else if (temp_c < (uint8_t)CRITICAL_TEMP_L){
             // if under temperature
-            bat_temp[temp].bad_counter++;
-            bat_temp[temp].bad_type = 0;
+            bat_temp[node].bad_counter++;
+            bat_temp[node].bad_type = 0;
         }else{
             //if there is no error
-            if (bat_temp[temp].bad_counter>0){
-                bat_temp[temp].bad_counter--;
+            if (bat_temp[node].bad_counter>0){
+                bat_temp[node].bad_counter--;
             }           
         }
     }
@@ -526,14 +567,14 @@ void check_temp(){
     }
     
     
-    // update pack of cell voltage error
+    // update pack of temp error
     for (node = 0; node < N_OF_NODE; node++){
         if (bat_pack.nodes[node]->over_temp != 0){
             bat_pack.status |= PACK_TEMP_OVER;
             bat_err_add(PACK_TEMP_OVER, bat_node[node].over_temp, node);
         }
 
-        if (bat_pack.nodes[node]->under_voltage != 0){
+        if (bat_pack.nodes[node]->under_temp != 0){
             bat_pack.status  |= PACK_TEMP_UNDER;
             bat_err_add(PACK_TEMP_UNDER, bat_node[node].under_temp, node);
         }
@@ -813,7 +854,7 @@ void bat_balance(){
     
     for (ic=0;ic<TOTAL_IC;ic++){
         for (cell=0;cell<12;cell++){
-            if ((CELL_ENABLE & (0x1<<cell)) && ((cell_codes[ic][cell]/10)-low_voltage > 30)){
+            if ((CELL_ENABLE & (0x1<<cell)) && ((cell_codes[ic][cell]/10)-low_voltage > BALANCE_THRESHOLD)){
                 // if this cell is 30mV or more higher than the lowest cell
                 if (cell<7){
                     temp_cfg[ic][4] |= (0x1<<cell);
@@ -826,5 +867,30 @@ void bat_balance(){
     
     LTC6804_wrcfg(TOTAL_IC, temp_cfg);
     
+    
+}
+
+
+void DEBUG_balancing_on(){
+uint8_t ic=0;
+    uint8_t cell=0;
+    uint8_t i=0;
+    uint8_t temp_cfg[TOTAL_IC][6];
+    uint16_t low_voltage = bat_pack.LO_voltage <= UNDER_VOLTAGE ? UNDER_VOLTAGE :bat_pack.LO_voltage;
+    
+    for (ic=0;ic<TOTAL_IC;ic++){
+        for (i=0;i<6;i++){
+            temp_cfg[ic][i] = tx_cfg[ic][i];
+        }
+    }
+    
+    for (ic=0;ic<TOTAL_IC;ic++){
+        for (cell=0;cell<12;cell++){
+            temp_cfg[ic][4] |= 0xff;
+            temp_cfg[ic][5] |= 0x2f;
+        }
+    }
+    
+    LTC6804_wrcfg(TOTAL_IC, temp_cfg);
     
 }
