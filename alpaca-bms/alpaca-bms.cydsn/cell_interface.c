@@ -315,6 +315,28 @@ void update_volt(uint16_t cell_codes[TOTAL_IC][12]){
     uint8_t stack=0;
     uint32_t temp_volt;
 
+    // 2/9/2017 Added voltage offset for the first and last cell of each node
+
+    for (ic=0;ic<TOTAL_IC;ic++){
+        for (raw_cell=0;raw_cell<12;raw_cell++){
+            if ((CELL_ENABLE & (0x1<<raw_cell))){
+                int temp = cell % (N_OF_CELL / N_OF_NODE);       
+                if (temp == 0 || temp == 13)
+                    cell_codes[ic][raw_cell] += VOLTAGE_READING_OFFSET*10;
+                cell++;            
+            }
+        }
+    } 
+    cell = 0;
+    /*
+    int i = 0;
+    for (i = 0; i < 84; i++){
+        int temp = i % (N_OF_CELL / N_OF_NODE);
+        if (temp == 0 || temp == 13)
+            bat_cell[i].voltage += VOLTAGE_READING_OFFSET;
+    }
+    */
+    
     //log in voltage data
     for (ic=0;ic<TOTAL_IC;ic++){
         for (raw_cell=0;raw_cell<12;raw_cell++){
@@ -411,6 +433,7 @@ void check_volt(){
             min_voltage = bat_cell[cell].voltage;
         }
     }
+    
     bat_pack.HI_voltage = max_voltage;
     bat_pack.LO_voltage = min_voltage;
     
@@ -856,7 +879,7 @@ void bat_balance(){
         for (cell=0;cell<12;cell++){
             if ((CELL_ENABLE & (0x1<<cell)) && ((cell_codes[ic][cell]/10)-low_voltage > BALANCE_THRESHOLD)){
                 // if this cell is 30mV or more higher than the lowest cell
-                if (cell<7){
+                if (cell<8){
                     temp_cfg[ic][4] |= (0x1<<cell);
                 }else{
                     temp_cfg[ic][5] |= (0x1<<(cell-8));
@@ -872,7 +895,7 @@ void bat_balance(){
 
 
 void DEBUG_balancing_on(){
-uint8_t ic=0;
+    uint8_t ic=0;
     uint8_t cell=0;
     uint8_t i=0;
     uint8_t temp_cfg[TOTAL_IC][6];

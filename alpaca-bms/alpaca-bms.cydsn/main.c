@@ -194,6 +194,7 @@ int main(void)
 				break;
 
 			case BMS_NORMAL:
+                
 			    OK_SIG_Write(1);
 			    check_cfg();  //CANNOT be finished, because 
 				//check_cells();// TODO This function will be finished in get_cell_volt/check stack fuse
@@ -208,10 +209,18 @@ int main(void)
 				// because it is normal mode, just set a median length current reading interval
 				//bat_health_check();
                 update_soc();
+
+                
+                //CyDelay(2500);
+                
                 //bat_balance();
                 //bat_balance();
-                //DEBUG_balancing_on();
-                //DEBUG_balancing_on();
+                
+                //CyDelay(2500);
+                
+                
+                //DEBUG_balancing_on(); // All the discharge circuits will be turned on
+                //DEBUG_balancing_on(); // All the discharge circuits will be turned on
                 
                 set_current_interval(100);
 				system_interval = 500;
