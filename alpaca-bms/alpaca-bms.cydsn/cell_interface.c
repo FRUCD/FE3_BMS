@@ -877,7 +877,12 @@ void bat_balance(){
     
     for (ic=0;ic<TOTAL_IC;ic++){
         for (cell=0;cell<12;cell++){
-            if ((CELL_ENABLE & (0x1<<cell)) && ((cell_codes[ic][cell]/10)-low_voltage > BALANCE_THRESHOLD)){
+            uint16_t diff = 0;
+            if (cell_codes[ic][cell]/10 > low_voltage)
+                diff = cell_codes[ic][cell]/10 - low_voltage;
+                
+            //if ((CELL_ENABLE & (0x1<<cell)) && ((cell_codes[ic][cell]/10)-low_voltage > BALANCE_THRESHOLD)){
+            if ( diff > 0 && diff > BALANCE_THRESHOLD ){    
                 // if this cell is 30mV or more higher than the lowest cell
                 if (cell<8){
                     temp_cfg[ic][4] |= (0x1<<cell);
@@ -887,6 +892,8 @@ void bat_balance(){
             }
         }
     }
+    
+    // discharge time has been set in void LTC6804_init_cfg() already. 0x2 = 1 min
     
     LTC6804_wrcfg(TOTAL_IC, temp_cfg);
     
@@ -909,8 +916,8 @@ void DEBUG_balancing_on(){
     
     for (ic=0;ic<TOTAL_IC;ic++){
         for (cell=0;cell<12;cell++){
-            temp_cfg[ic][4] |= 0xff;
-            temp_cfg[ic][5] |= 0x2f;
+            temp_cfg[ic][4] |= 0x00;
+            temp_cfg[ic][5] |= 0x21;
         }
     }
     
