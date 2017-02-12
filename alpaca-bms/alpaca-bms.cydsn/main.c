@@ -211,12 +211,12 @@ int main(void)
                 update_soc();
 
                 
-                CyDelay(1500);
+                CyDelay(3000); // 1500 works for test bench
                 
                 bat_balance();
                 bat_balance();
                 
-                CyDelay(1500);
+                CyDelay(3000);
                 
                 
                 //DEBUG_balancing_on(); // All the discharge circuits will be turned on

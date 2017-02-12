@@ -53,12 +53,15 @@ int16_t get_current(void)
 	bat_pack.current = (int16_t)floor(current*10); 
     //bat_pack.current = (int16_t)raw_supply;
     
+    /*
+    // comment out for 2/11/2017
 	if(bat_pack.current<(-2)){
 		bat_pack.status |= CHARGEMODE;
 	}else{
 		bat_pack.status &= ~CHARGEMODE;
 	}
-
+    */
+    
 	return (int16_t)floor(current*10);
 }// get_current()
 

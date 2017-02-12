@@ -37,7 +37,7 @@
     #define SOC_SOC_LOW   (10000*3600u)      //manually set it in mAh
     #define SOC_FULL_CAP (75000*3600u)     //let's say, 75,000mAh
     #define SOC_FULL      (110000u)   //when voltage reaches 115V, consider it full
-    #define BALANCE_THRESHOLD (30u)
+    #define BALANCE_THRESHOLD (15u)
     #define VOLTAGE_READING_OFFSET  (58u) // add 58 mv to both the 0th and 13th cells
     
     #define N_OF_CELL (84u)
