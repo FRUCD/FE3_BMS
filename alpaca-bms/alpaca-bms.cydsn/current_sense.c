@@ -9,7 +9,7 @@ void current_init(void)
 {
 	ADC_current_Start();
     MUX_current_Start();
-	// set_current_interval();
+    set_current_interval(100);
 } // current_init()
 
 
@@ -47,7 +47,7 @@ int16_t get_current(void)
 	// Vi referenced to 5V
 	//current = ((10*current-25)/4)/10;
     // current in ampere
-	current = CURRENT_DIR*(float)(raw_voltage-2582)/4;
+	current = CURRENT_DIR*(float)(raw_voltage-2584)/4;
 
 	//mypack.current = (int16_t)floor(current);
 	bat_pack.current = (int16_t)floor(current*10); 

@@ -18,25 +18,25 @@
     #include <project.h>
     #include "can_manager.h"
    
-    #define ERROR_VOLTAGE_LIMIT (3u)
-    #define ERROR_TEMPERATURE_LIMIT (3u)
-    #define FUSE_BAD_LIMIT (3u)
-    #define BAD_FILTER_LIMIT (5u)
+    #define ERROR_VOLTAGE_LIMIT (10u)
+    #define ERROR_TEMPERATURE_LIMIT (10u)
+    #define FUSE_BAD_LIMIT (10u)
+    #define BAD_FILTER_LIMIT (10u)
     
     #define CELL_ENABLE (0x1cf)
     #define OVER_VOLTAGE (4500u)
-    #define UNDER_VOLTAGE (00u)
-    #define STACK_VOLT_DIFF_LIMIT (3000u)   //3 volt
+    #define UNDER_VOLTAGE (2800u)
+    #define STACK_VOLT_DIFF_LIMIT (9000u)   //9 volt
     #define CRITICAL_TEMP_L (0u)          // 0 C
-    #define CRITICAL_TEMP_H (60u)             //65 C
-    #define BAD_THERM_LIMIT (8u)
+    #define CRITICAL_TEMP_H (60u)             //60 C
+    #define BAD_THERM_LIMIT (15u)
     #define SOC_NOMIAL      (50000*3600u)    //nomial SOC before calibration
     #define SOC_CALI_HIGH (106000u)     //High cali point at 106V
     #define SOC_SOC_HIGH  (60000*3600u)      //manually set it in mAh
     #define SOC_CALI_LOW (80000u)     //Low Cali point at 80V
     #define SOC_SOC_LOW   (10000*3600u)      //manually set it in mAh
     #define SOC_FULL_CAP (75000*3600u)     //let's say, 75,000mAh
-    #define SOC_FULL      (110000u)   //when voltage reaches 115V, consider it full
+    #define SOC_FULL      (115000u)   //when voltage reaches 115V, consider it full
     #define BALANCE_THRESHOLD (15u)
     #define VOLTAGE_READING_OFFSET  (58u) // add 58 mv to both the 0th and 13th cells
     
@@ -162,8 +162,6 @@ typedef struct
  * @return 1 if everything is OK. 0 for hard failure.
  */
 void  bms_init();
-
-
 
 
 /**

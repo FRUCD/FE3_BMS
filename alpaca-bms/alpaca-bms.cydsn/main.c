@@ -157,16 +157,18 @@ void process_failure(){
 
 int main(void)
 {
+    // Stablize the BMS OK signal when system is still setting up
+    OK_SIG_Write(1);
+    
 	// Initialize state machine
 	BMS_MODE bms_status = BMS_BOOTUP;
 	uint32_t system_interval = 100;
     uint8_t led = 0;
     
-    
 	while(1){
 		switch (bms_status){
 			case BMS_BOOTUP:
-               // current_update_ISR_StartEx(current_update_Handler);
+                //current_update_ISR_StartEx(current_update_Handler);
                 //current_timer_Start();
 				can_init();
 				
@@ -190,7 +192,7 @@ int main(void)
 			    //some variables and states
 			    OK_SIG_Write(1);
                 bms_status = BMS_NORMAL;
-		       //terminal_run();
+		        //terminal_run();
 				break;
 
 			case BMS_NORMAL:
@@ -207,40 +209,30 @@ int main(void)
 				get_current(); // TODO get current reading from sensor
 			    bat_soc = get_soc(); // TODO calculate SOC()
 				// because it is normal mode, just set a median length current reading interval
-				//bat_health_check();
+			    
                 update_soc();
 
                 
-                CyDelay(3000); // 1500 works for test bench
+                //CyDelay(5000); // 1500 works for test bench
                 
-                bat_balance();
-                bat_balance();
+                //bat_balance();
+                //bat_balance();
                 
-                CyDelay(3000);
+                //CyDelay(5000);
                 
                 
                 //DEBUG_balancing_on(); // All the discharge circuits will be turned on
                 //DEBUG_balancing_on(); // All the discharge circuits will be turned on
                 
-                set_current_interval(100);
-				system_interval = 500;
-
-                
-                
-				if (bat_pack.health == FAULT){
+                bat_health_check();
+                if (bat_pack.health == FAULT){
 					bms_status = BMS_FAULT;
 				}
                 
-                /*
-				if (bat_pack.status && CHARGEMODE){
-					bms_status = BMS_CHARGEMODE;
-				}else if(RACING_FLAG){
-					bms_status = BMS_RACINGMODE;
-				}
-                */
-                
+                set_current_interval(100);
+				system_interval = 100;
 				break;
-
+/*
 			case BMS_CHARGEMODE:
 				OK_SIG_Write(1);
 
@@ -255,7 +247,6 @@ int main(void)
 				bat_health_check();
                 set_current_interval(100);
 				system_interval = 1000;
-
 
                 if (bat_pack.health == FAULT){
 					bms_status = BMS_FAULT;
@@ -297,17 +288,22 @@ int main(void)
 					bms_status = BMS_FAULT;
 				}
 				break;
-
+*/
 			case BMS_FAULT:
 				OK_SIG_Write(0u);
 				// send
-
+                process_event(); // CAN broadcasting
+                /*
+                * Sirius: looks like the CAN broadcasting is redundant above. 
+                * But I am just being extra cautious for the FE4 competition
+                */
 				bms_status = BMS_FAULT;
-				system_interval = 100;
+				system_interval = 500;
 				process_failure();
+                break;
 			default:
 				bms_status = BMS_FAULT;
-
+                break;
 		}
         #ifdef WDT_ENABLE
 		    CyWdtClear();

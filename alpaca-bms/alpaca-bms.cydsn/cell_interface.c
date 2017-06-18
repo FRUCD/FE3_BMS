@@ -168,7 +168,8 @@ void check_cfg(){
     //LCD_Position(1u,0u);
     for (i=0;i<8;i++){
         if (rx_cfg[i] != tx_cfg[i]){
-              fatal_err = COM_FAILURE;
+            fatal_err = COM_FAILURE;
+            bat_pack.status |= COM_FAILURE;
             return;
         }
     }
@@ -203,7 +204,6 @@ uint8_t get_cell_volt(){
     //get information
     update_volt(cell_codes);
     
-    
     //check error
     check_volt();
 
@@ -218,9 +218,9 @@ uint8_t get_cell_temp(){
     LTC6804_adax();
     CyDelay(3);  
     wakeup_sleep();
-    uint8_t redundant=3;
+    uint8_t redundant=10;
     while (redundant>0){   
-        //read three time at most
+        //read 10 time at most
         error = LTC6804_rdaux(0,TOTAL_IC,aux_codes); // Set to read back all aux registers
         //DEBUG
         error=0;
@@ -279,7 +279,7 @@ uint8_t check_cells(){
 
   if (error==-1){
     return 1;
-    }
+  }
 
   for (i_IC=0;i_IC<TOTAL_IC;i_IC++){
     for (i_cell=0;i_cell<12;i_cell++){
@@ -435,9 +435,7 @@ void check_volt(){
     }
     
     bat_pack.HI_voltage = max_voltage;
-    bat_pack.LO_voltage = min_voltage;
-    
-        
+    bat_pack.LO_voltage = min_voltage;   
 }
 
                 
@@ -643,6 +641,7 @@ void check_stack_fuse()
 			bat_stack[2].bad_counter--;
 
 
+    // FUSE_BAD_LIMIT is not the actual stack number. It's how many times that Stack fuse fails
 	stack=0;
 	for (stack =0;stack<3;stack++){
 		if (bat_stack[stack].bad_counter>FUSE_BAD_LIMIT){
@@ -676,7 +675,13 @@ void check_stack_fuse()
 
 
 void bat_err_add(uint16_t err, uint8_t bad_cell, uint8_t bad_node){
-    bat_pack.health = FAULT;
+    bat_pack.health = FAULT; 
+    /* 
+    * Sirius: I know this set-to-fault is redundant with the check in bat_health_check(), 
+    * but just want to have an extra assurance for FE4 Competition because we haven't run this new firmware
+    * on track
+    */
+    
     uint8_t i=0;
     // check array, dont duplicate
     if (bat_err_index_loop){
@@ -697,7 +702,6 @@ void bat_err_add(uint16_t err, uint8_t bad_cell, uint8_t bad_node){
         }
     }
 
-
     if (bat_err_index>=100){
         bat_err_index_loop = 1;
         bat_err_index = 0;
@@ -710,7 +714,6 @@ void bat_err_add(uint16_t err, uint8_t bad_cell, uint8_t bad_node){
     bat_err_array[bat_err_index].err = err;
     bat_err_array[bat_err_index].bad_cell = bad_cell;
     bat_err_array[bat_err_index].bad_node = bad_node;
-
 
     return;
 }
@@ -838,13 +841,33 @@ void update_soc(){
     
     return;
 }
-
-
+/*
+    #define NO_ERROR 0x0000
+    #define CHARGEMODE 0x0001
+    #define PACK_TEMP_OVER 0x0002
+    #define STACK_FUSE_BROKEN 0x0004
+    #define PACK_TEMP_UNDER 0x0008
+    #define LOW_SOC   0x0010
+    #define CRITICAL_SOC   0x0020
+    #define IMBALANCE   0x0040
+    #define COM_FAILURE   0x0080
+    #define ISO_FAULT   0x0400
+    #define CELL_VOLT_OVER   0x0800
+    #define CELL_VOLT_UNDER   0x1000
+    #define CHARGE_HAULT   0x2000
+    #define FULL   0x4000
+*/
 uint8_t bat_health_check(){
-    if ((bat_pack.status | COM_FAILURE) ||
-    (bat_pack.status | STACK_FUSE_BROKEN) ||
-    (bat_pack.status | ISO_FAULT) ||
-    (bat_pack.status | IMBALANCE)){
+    if (
+        (bat_pack.status & PACK_TEMP_OVER) ||
+        (bat_pack.status & STACK_FUSE_BROKEN) ||
+        (bat_pack.status & PACK_TEMP_UNDER) ||
+        //(bat_pack.status & IMBALANCE) || not in use
+        (bat_pack.status & COM_FAILURE) ||
+        //(bat_pack.status & ISO_FAULT) || not in use? 
+        (bat_pack.status & CELL_VOLT_OVER) ||
+        (bat_pack.status & CELL_VOLT_UNDER)       
+    ){
         bat_pack.health = FAULT;
         return 1;
     }else{
