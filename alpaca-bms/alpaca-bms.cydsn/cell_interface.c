@@ -169,7 +169,6 @@ void check_cfg(){
     for (i=0;i<8;i++){
         if (rx_cfg[i] != tx_cfg[i]){
             fatal_err = COM_FAILURE;
-            bat_pack.status |= COM_FAILURE;
             return;
         }
     }
@@ -307,7 +306,7 @@ uint8_t check_cells(){
 }// check_cells()
 
 
-void update_volt(uint16_t cell_codes[TOTAL_IC][12]){
+void update_volt(volatile uint16_t cell_codes[TOTAL_IC][12]){
     uint8_t cell=0;
     uint8_t raw_cell=0;
     uint8_t node = 0;
@@ -441,7 +440,7 @@ void check_volt(){
                 
 
 
-void update_temp(uint16_t aux_codes[TOTAL_IC][6]){
+void update_temp(volatile uint16_t aux_codes[TOTAL_IC][6]){
     uint8_t ic=0;
     uint16_t temp;
     uint8_t i=0;

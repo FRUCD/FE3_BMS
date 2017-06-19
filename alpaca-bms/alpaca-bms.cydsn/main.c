@@ -48,15 +48,20 @@ CY_ISR(current_update_Handler){
 
 
 void process_event(){
+    CyGlobalIntDisable
     // heartbeat
+    CyDelay(10);
     can_send_status(0xFE,
     	bat_pack.SOC_percent,
     	bat_pack.status,
     	0,0,0);
-    // send voltage
+    CyDelay(10);
+    // send voltage   
     can_send_volt(bat_pack.LO_voltage,
 				bat_pack.HI_voltage,
 				bat_pack.voltage);
+    CyDelay(10);
+
     // send temperature
     can_send_temp(bat_pack.nodes[0]->high_temp,
 				bat_pack.nodes[1]->high_temp,
@@ -66,8 +71,13 @@ void process_event(){
                 bat_pack.nodes[5]->high_temp,
 				bat_pack.HI_temp_node,
 				bat_pack.HI_temp_c);
+    
     // send current
-    can_send_current();
+    CyDelay(10);
+    can_send_current(bat_pack.current);
+    CyDelay(10);
+    
+    CyGlobalIntEnable;
 }
 
 void DEBUG_send_cell_voltage(){
@@ -162,7 +172,7 @@ int main(void)
     
 	// Initialize state machine
 	BMS_MODE bms_status = BMS_BOOTUP;
-	uint32_t system_interval = 100;
+	uint32_t system_interval = 0;
     uint8_t led = 0;
     
 	while(1){
@@ -230,7 +240,7 @@ int main(void)
 				}
                 
                 set_current_interval(100);
-				system_interval = 100;
+				system_interval = 500;
 				break;
 /*
 			case BMS_CHARGEMODE:

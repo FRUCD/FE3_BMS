@@ -86,71 +86,70 @@ typedef enum {
 
 typedef struct
 {
-  uint16_t err;
-  uint8_t bad_cell;
-  uint8_t bad_node;
-
+  volatile uint16_t err;
+  volatile uint8_t bad_cell;
+  volatile uint8_t bad_node;
 }BAT_ERR_t;
 
 typedef struct 
 {
-  uint16_t voltage;
-  uint8_t bad_counter;
-  uint8_t bad_type;
+  volatile uint16_t voltage;
+  volatile uint8_t bad_counter;
+  volatile uint8_t bad_type;
 }BAT_CELL_t;
 
 typedef struct
 {
-  uint16_t temp_raw;
-  uint8_t temp_c;
-  uint8_t bad_counter;
-  uint8_t type;
-  uint8_t bad_type;
-  uint16_t temp_ref;
+  volatile uint16_t temp_raw;
+  volatile uint8_t temp_c;
+  volatile uint8_t bad_counter;
+  volatile uint8_t type;
+  volatile uint8_t bad_type;
+  volatile uint16_t temp_ref;
 }BAT_TEMP_t;
 
 typedef struct
 {
-  BAT_CELL_t *cells[14];
-  BAT_TEMP_t *temps[10];
-  uint8 high_temp;
-  uint16_t over_temp;
-  uint16_t under_temp;
-  uint16_t over_voltage;
-  uint16_t under_voltage;
+  volatile BAT_CELL_t *cells[14];
+  volatile BAT_TEMP_t *temps[10];
+  volatile uint8 high_temp;
+  volatile uint16_t over_temp;
+  volatile uint16_t under_temp;
+  volatile uint16_t over_voltage;
+  volatile uint16_t under_voltage;
 }BAT_NODE_t;
 
 typedef struct 
 {
-  BAT_NODE_t *nodes[2];
-  uint32_t voltage;
-  uint8_t bad_counter;
+  volatile BAT_NODE_t *nodes[2];
+  volatile uint32_t voltage;
+  volatile uint8_t bad_counter;
 }BAT_STACK_t;
 
 typedef struct
 {
-  BAT_STACK_t *stacks[3];
-  BAT_NODE_t *nodes[6];
-  uint32_t voltage;
-  int16_t current;
-  uint8_t fuse_fault;
-  uint16_t status;
-  BAT_HEALTH health;
-  uint32_t current_charge;
-  uint8_t SOC_percent;
-  uint8_t SOC_cali_flag;
-  uint8_t HI_temp_c;
-  uint8_t HI_temp_node;
-  uint8_t HI_temp_raw;
-  uint16_t HI_voltage;
-  uint16_t LO_voltage;
-  uint16_t time_stamp;
+  volatile BAT_STACK_t *stacks[3];
+  volatile BAT_NODE_t *nodes[6];
+  volatile uint32_t voltage;
+  volatile int16_t current;
+  volatile uint8_t fuse_fault;
+  volatile uint16_t status;
+  volatile BAT_HEALTH health;
+  volatile uint32_t current_charge;
+  volatile uint8_t SOC_percent;
+  volatile uint8_t SOC_cali_flag;
+  volatile uint8_t HI_temp_c;
+  volatile uint8_t HI_temp_node;
+  volatile uint8_t HI_temp_raw;
+  volatile uint16_t HI_voltage;
+  volatile uint16_t LO_voltage;
+  volatile uint16_t time_stamp;
 }BAT_PACK_t;
 
 typedef struct 
 {
-  uint8_t percent_SOC;
-  uint32_t absolute_SOC;
+  volatile uint8_t percent_SOC;
+  volatile uint32_t absolute_SOC;
 }BAT_SOC_t;
 
 
@@ -228,7 +227,7 @@ uint8_t get_cell_temp();
  * @param 1 input parameters, which is raw cell_codes.
  * @return NULL.
  */
-void update_volt(uint16_t cell_codes[TOTAL_IC][12]);
+void update_volt(volatile uint16_t cell_codes[TOTAL_IC][12]);
 
 /**
  * @check voltage and detect error
@@ -244,7 +243,7 @@ void check_volt();
  * @param 1 input parameters, which is raw aux_codes.
  * @return NULL.
  */
-void update_temp(uint16_t aux_codes[TOTAL_IC][6]);
+void update_temp(volatile uint16_t aux_codes[TOTAL_IC][6]);
 
 /**
  * @check temperature and detect error

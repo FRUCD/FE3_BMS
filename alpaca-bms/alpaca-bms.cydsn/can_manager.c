@@ -15,14 +15,14 @@ The datatype consists of three bytes:
 
 
 
-void can_send_temp(uint8_t high_temp0,
-    uint8_t high_temp1,
-    uint8_t high_temp2,
-    uint8_t high_temp3,
-    uint8_t high_temp4,
-    uint8_t high_temp5,
-    uint8_t high_tempNode,
-    uint8_t high_temp)
+void can_send_temp(volatile uint8_t high_temp0,
+    volatile uint8_t high_temp1,
+    volatile uint8_t high_temp2,
+    volatile uint8_t high_temp3,
+    volatile uint8_t high_temp4,
+    volatile uint8_t high_temp5,
+    volatile uint8_t high_tempNode,
+    volatile uint8_t high_temp)
 {
     can_buffer[0] = (high_temp0/10)<<4 | (high_temp0%10);
     can_buffer[1] = (high_temp1/10)<<4 | (high_temp1%10);
@@ -43,9 +43,9 @@ void can_send_temp(uint8_t high_temp0,
 
 
 void can_send_volt(
-    uint16_t min_voltage,
-    uint16_t max_voltage,
-    uint32_t pack_voltage)
+    volatile uint16_t min_voltage,
+    volatile uint16_t max_voltage,
+    volatile uint32_t pack_voltage)
 {
     //max and min voltage means the voltage of single cell
         can_buffer[0] = HI8(min_voltage);
@@ -67,11 +67,10 @@ void can_send_volt(
 
 
 
-void can_send_current()
+void can_send_current(volatile int16_t battery_current)
 {
-    int16_t battery_current = bat_pack.current;
 	can_buffer[0] = (battery_current<0 ? 1:0);
-	can_buffer[1] = 0xFF & (uint16)(abs(battery_current)>>8); // upper byte
+	can_buffer[1] = 0xFF & (((uint16_t)abs(battery_current))>>8); // upper byte
     can_buffer[2] = 0xFF & abs(battery_current); // lower byte
     can_buffer[3] = 0x00; 
     can_buffer[4] = 0x00; 
@@ -79,15 +78,16 @@ void can_send_current()
     can_buffer[6] = 0xff & (((abs(battery_current)/1000%10)<<4) | (0x0f & (abs(battery_current)/100%10))); 
     can_buffer[7] = 0xff & (((uint8)abs(battery_current)/10%10) << 4 | abs(battery_current)%10); 
 	CAN_1_SendMsgcurrent();
+    CyDelay(15);
 } // can_send_current()
 
 
-void can_send_status(uint8_t name,
-                    uint8_t SOC_P,
-                    BMS_STATUS status,
-                    uint8_t stack,
-                    uint8_t cell,
-                    uint16_t value16){
+void can_send_status(volatile uint8_t name,
+                    volatile uint8_t SOC_P,
+                    volatile BMS_STATUS status,
+                    volatile uint8_t stack,
+                    volatile uint8_t cell,
+                    volatile uint16_t value16){
 //8 SOC Percent
 //8 AH used since full charge
 //16 BMS Status bits (error flags)
