@@ -222,14 +222,15 @@ int main(void)
 			    
                 update_soc();
 
+                /*
+                //Uncomment all of this to blance
+                CyDelay(5000); // 1500 works for test bench
                 
-                //CyDelay(5000); // 1500 works for test bench
+                bat_balance();
+                bat_balance();
                 
-                //bat_balance();
-                //bat_balance();
-                
-                //CyDelay(5000);
-                
+                CyDelay(5000);
+                */
                 
                 //DEBUG_balancing_on(); // All the discharge circuits will be turned on
                 //DEBUG_balancing_on(); // All the discharge circuits will be turned on

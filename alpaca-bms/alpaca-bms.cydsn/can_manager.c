@@ -49,7 +49,7 @@ void can_send_volt(
 {
     //max and min voltage means the voltage of single cell
         can_buffer[0] = HI8(min_voltage);
-        can_buffer[1] = LO8(min_voltage);;
+        can_buffer[1] = LO8(min_voltage);
 
         can_buffer[2] = HI8(max_voltage);
         can_buffer[3] = LO8(max_voltage);
