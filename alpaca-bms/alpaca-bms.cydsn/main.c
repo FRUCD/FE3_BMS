@@ -11,6 +11,8 @@
 
 //#define WDT_ENABLE
 
+#define DEBUG_MODE
+
 typedef enum 
 {
 	BMS_BOOTUP,
@@ -165,6 +167,16 @@ void process_failure(){
 	}
 }
 
+void debugMain() {
+    wakeup_sleep();
+    while(1) {
+        // For debugging stay in here.
+        CyDelay(100);
+        SKY_get_cell_volt();
+        //wakeup_sleep();
+    }
+}
+
 int main(void)
 {
     // Stablize the BMS OK signal when system is still setting up
@@ -203,6 +215,9 @@ int main(void)
 			    OK_SIG_Write(1);
                 bms_status = BMS_NORMAL;
 		        //terminal_run();
+                #ifdef DEBUG_MODE
+                    debugMain();
+                #endif
 				break;
 
 			case BMS_NORMAL:

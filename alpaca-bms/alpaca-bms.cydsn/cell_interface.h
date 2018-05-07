@@ -311,4 +311,6 @@ void _SOC_log();
 void bat_balance();
 void DEBUG_balancing_on();
 
+uint8_t SKY_get_cell_volt();
+
 #endif // CELL_INTERFACE_H

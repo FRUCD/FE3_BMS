@@ -211,6 +211,28 @@ uint8_t get_cell_volt(){
 }// get_cell_volt()
 
 
+uint8_t SKY_get_cell_volt(){
+    uint8_t voltage = 0x00;
+    LTC68_ClearFIFO();
+   // DEBUG_UART_PutString("Enter GET_CELL_VOLT\n");
+    int error;
+    wakeup_sleep();
+    SKY_LTC6804_adcv();
+    CyDelay(100); // Used to be 10ms in FE4
+    wakeup_sleep();
+    error = SKY_LTC6804_rdcv(1, TOTAL_IC,cell_codes); // Set to read back all cell voltage registers
+    if (error == -1)
+    {
+        #ifdef DEBUG_LCD
+            LCD_Position(0u,10u);
+            LCD_PrintString("ERROR");
+        #endif
+       return 1;
+    }
+    
+    return 0;
+}// get_cell_volt()
+
 uint8_t get_cell_temp(){
     int error;
     wakeup_sleep();
@@ -801,7 +823,7 @@ void update_soc(){
         bat_pack.time_stamp = SOC_Timer_ReadCounter();
     }
     
-    // calibrate SOC when voltage reach linear region.
+    // calibrate SOC when voltage reach linear fion.
     // if its high SOC
     if ((bat_pack.SOC_cali_flag==0) && (bat_pack.voltage >= SOC_CALI_HIGH)){
         bat_pack.current_charge = SOC_SOC_HIGH;

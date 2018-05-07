@@ -177,6 +177,32 @@ void LTC6804_adcv()
   //1
   cmd[0] = ADCV[0];
   cmd[1] = ADCV[1];
+
+  //2
+  cmd_pec = pec15_calc(2, ADCV);
+  cmd[2] = (uint8_t)(cmd_pec >> 8);
+  cmd[3] = (uint8_t)(cmd_pec);
+  
+  //3
+  wakeup_idle(); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  
+  //4
+    //spi_write_array(4,cmd);
+  LTC68_PutArray(cmd, 4);
+
+}
+
+void SKY_LTC6804_adcv()
+{
+
+  uint8_t cmd[4];
+  uint16_t cmd_pec;
+
+  uint8_t addr = 0x00;
+  
+  //1
+  cmd[0] = ADCV[0];
+  cmd[1] = ADCV[1];
   
   //2
   cmd_pec = pec15_calc(2, ADCV);
@@ -432,6 +458,33 @@ uint8_t LTC6804_rdcv(uint8_t reg, // Controls which cell voltage register is rea
  //2
 return(pec_error);
 }
+
+uint8_t SKY_LTC6804_rdcv(uint8_t reg, // Controls which cell voltage register is read back.
+					 uint8_t total_ic, // the number of ICs in the system
+					 uint16_t cell_codes[][12] // Array of the parsed cell codes
+					 )
+{
+  
+  const uint8_t NUM_RX_BYT = 8;
+  const uint8_t BYT_IN_REG = 6;
+  const uint8_t CELL_IN_REG = 3;
+  uint8_t cell_data[NUM_RX_BYT*total_ic];
+  for (int i = 0; i < NUM_RX_BYT*total_ic; i++) {
+    cell_data[i] = 0;  
+  }
+
+  uint8_t cell_reg=0;
+  uint8_t current_ic=0;
+  uint8_t current_cell=0;
+    
+  SKY_LTC6804_rdcv_reg(reg, total_ic, cell_data);
+  cell_codes[0][0] = cell_data[0];
+    
+
+  
+ //2
+return(1);
+}
 /*
 	LTC6804_rdcv Sequence
 	
@@ -525,6 +578,58 @@ void LTC6804_rdcv_reg(uint8_t reg, //Determines which cell voltage register is r
         spi_write_read(cmd,4,data,(REG_LEN*total_ic));
     }else{
         spi_write_read(cmd,4,data,(REG_LEN*total_ic));
+    }
+
+}
+
+void SKY_LTC6804_rdcv_reg(uint8_t reg, //Determines which cell voltage register is read back
+					  uint8_t total_ic, //the number of ICs in the
+					  uint8_t *data //An array of the unparsed cell codes
+					  )
+{
+  const uint8_t REG_LEN = 8; //number of bytes in each ICs register + 2 bytes for the PEC
+  uint8_t cmd[4];
+  uint16_t cmd_pec;
+  
+  //1
+  if (reg == 1)     //1: RDCVA
+  {
+    cmd[1] = 0x04;
+    cmd[0] = 0x00;
+  }
+  else if(reg == 2) //2: RDCVB
+  {
+    cmd[1] = 0x06;
+    cmd[0] = 0x00;
+  } 
+  else if(reg == 3) //3: RDCVC
+  {
+    cmd[1] = 0x08;
+    cmd[0] = 0x00;
+  } 
+  else if(reg == 4) //4: RDCVD
+  {
+    cmd[1] = 0x0A;
+    cmd[0] = 0x00;
+  } 
+  uint8_t addr = 0x00; // Hard code for now
+  cmd[0] = 0x80 + (addr<<3); //Setting address
+  cmd[0] = cmd[0] | 0x80;
+
+  //2
+  cmd_pec = pec15_calc(2, cmd);
+  cmd[2] = (uint8_t)(cmd_pec >> 8);
+  cmd[3] = (uint8_t)(cmd_pec); 
+  
+  //3
+   wakeup_idle(); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  
+  //4
+    if (reg == 1){
+        //spi_write_read(cmd,4,data,(REG_LEN*total_ic));
+        spi_write_read(cmd,4,data,(REG_LEN));
+    }else{
+        spi_write_read(cmd,4,data,(REG_LEN));
     }
 
 }
@@ -1039,7 +1144,7 @@ void wakeup_sleep()
   // output_low(LTC6804_CS);
   // delay(1); // Guarantees the LTC6804 will be in standby
   // output_high(LTC6804_CS);
-  LTC68_WriteTxData(0xff);  //write dummy byte to wake uph
+  LTC68_WriteTxData(0x4D);  //write dummy byte to wake up (ascii 'M')
   while(! (LTC68_ReadTxStatus() & LTC68_STS_SPI_DONE)){
     }
    LTC68_ReadRxData();
@@ -1120,27 +1225,26 @@ void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
    LTC68_WriteTxData(tx_Data[i]);
     }
    
-
+/*
    for(i = 0; i < rx_len; i++)
   {
 
   LTC68_WriteTxData(0x00);
     }
+*/
      
 
     CyDelay(1);
-//    while(dummy_read!=rx_len+tx_len){
-//    dummy_read=(uint8_t)LTC68_GetRxBufferSize();
-//    };
+
     while(! (LTC68_ReadTxStatus() & LTC68_STS_SPI_DONE)){
     }
 
-
+/*
     for(i = 0; i < tx_len; i++)
     {
         dummy_read = (uint8_t)LTC68_ReadRxData();
     }
-
+*/
     for(i = 0; i < rx_len; i++)
     {
         rx_data[i] = (uint8_t)LTC68_ReadRxData();

@@ -282,4 +282,15 @@ void spi_write_read(uint8_t *TxData, uint8_t TXlen, uint8_t *rx_data, uint8_t RX
 
 void print_cells(uint16_t raw);
 
+void SKY_LTC6804_adcv();
+
+uint8_t SKY_LTC6804_rdcv(uint8_t reg, // Controls which cell voltage register is read back.
+					 uint8_t total_ic, // the number of ICs in the system
+					 uint16_t cell_codes[][12] // Array of the parsed cell codes
+					 );
+void SKY_LTC6804_rdcv_reg(uint8_t reg, //Determines which cell voltage register is read back
+					  uint8_t total_ic, //the number of ICs in the
+					  uint8_t *data //An array of the unparsed cell codes
+					  );
+
 #endif
