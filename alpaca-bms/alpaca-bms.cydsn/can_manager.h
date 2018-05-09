@@ -3,7 +3,7 @@
 
 #include <project.h>
 #include "data.h"
-#include "LTC68041.h"
+#include "LTC68042.h"
 
 typedef enum{
     NO_ERROR=0x0000,

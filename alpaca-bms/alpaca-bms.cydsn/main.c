@@ -171,7 +171,7 @@ void debugMain() {
     wakeup_sleep();
     while(1) {
         // For debugging stay in here.
-        CyDelay(100);
+        CyDelay(500);
         SKY_get_cell_volt();
         //wakeup_sleep();
     }
@@ -224,17 +224,17 @@ int main(void)
                 
 			    OK_SIG_Write(1);
 			    check_cfg();  //CANNOT be finished, because 
-				//check_cells();// TODO This function will be finished in get_cell_volt/check stack fuse
+				
 		        get_cell_volt();// TODO Get voltage
-                //DEBUG_send_cell_voltage();
-                //DEBUG_send_temp();
 				check_stack_fuse(); // TODO: check if stacks are disconnected
 				get_cell_temp();// TODO Get temperature
                 
-				get_current(); // TODO get current reading from sensor
+				/*
+                // TODO: Calculate SOC
+                get_current(); // TODO get current reading from sensor
 			    bat_soc = get_soc(); // TODO calculate SOC()
 				// because it is normal mode, just set a median length current reading interval
-			    
+			    */
                 update_soc();
 
                 /*

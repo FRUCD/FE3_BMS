@@ -1,4 +1,5 @@
 #include "BMS_monitor.h"
+#include "cell_interface.h"
 #include <stdio.h>
 #include <stdbool.h>
 

@@ -11,7 +11,7 @@
 
 #include "cell_interface.h"
 #include "current_sense.h"
-#include "LTC68041.h"
+#include "LTC68042.h"
 #include "math.h"
 
 #include <stdlib.h>
@@ -42,7 +42,6 @@ uint32_t lastTime;
  * @return 1 if everything is OK. 0 for hard failure.
  */
 void  bms_init(){
-    //setup SS pin
     SS_SetDriveMode(SS_DM_RES_UP);
     LTC68_Start();
     LTC6804_initialize();
@@ -161,6 +160,7 @@ void  wake_up(){
 }
 
 void check_cfg(){
+    /*
     //DEBUG_UART_PutString("Enter Check_CFG\n");
     int i=0;
     wakeup_sleep();
@@ -172,6 +172,7 @@ void check_cfg(){
             return;
         }
     }
+    */
 }
 
 
@@ -212,15 +213,14 @@ uint8_t get_cell_volt(){
 
 
 uint8_t SKY_get_cell_volt(){
-    uint8_t voltage = 0x00;
     LTC68_ClearFIFO();
    // DEBUG_UART_PutString("Enter GET_CELL_VOLT\n");
     int error;
     wakeup_sleep();
-    SKY_LTC6804_adcv();
-    CyDelay(100); // Used to be 10ms in FE4
+    LTC6804_adcv();
+    CyDelay(10); 
     wakeup_sleep();
-    error = SKY_LTC6804_rdcv(1, TOTAL_IC,cell_codes); // Set to read back all cell voltage registers
+    error = LTC6804_rdcv(0, TOTAL_IC,cell_codes); // Set to read back all cell voltage registers
     if (error == -1)
     {
         #ifdef DEBUG_LCD
@@ -230,7 +230,7 @@ uint8_t SKY_get_cell_volt(){
        return 1;
     }
     
-    return 0;
+    return error;
 }// get_cell_volt()
 
 uint8_t get_cell_temp(){
@@ -280,8 +280,10 @@ uint8_t get_cell_temp(){
 
 
 uint8_t check_cells(){ 
-    // not in use
+    // not in use!!
     //using ADOW
+    
+  /*
   uint16_t cell_pu[TOTAL_IC][12];
   uint16_t cell_pd[TOTAL_IC][12];
   int error;
@@ -324,7 +326,8 @@ uint8_t check_cells(){
 
   }
     return 0;
-
+    */
+    return 0xFF;
 }// check_cells()
 
 
@@ -907,6 +910,8 @@ void _SOC_log(){
 
 
 void bat_balance(){
+    
+    /*
     uint8_t ic=0;
     uint8_t cell=0;
     uint8_t i=0;
@@ -941,11 +946,12 @@ void bat_balance(){
     
     LTC6804_wrcfg(TOTAL_IC, temp_cfg);
     
-    
+    */
 }
 
 
 void DEBUG_balancing_on(){
+    /*
     uint8_t ic=0;
     uint8_t cell=0;
     uint8_t i=0;
@@ -966,5 +972,5 @@ void DEBUG_balancing_on(){
     }
     
     LTC6804_wrcfg(TOTAL_IC, temp_cfg);
-    
+    */
 }

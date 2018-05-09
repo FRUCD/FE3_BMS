@@ -18,6 +18,12 @@
     #include <project.h>
     #include "can_manager.h"
    
+    
+    // Stores cell data
+    uint16_t cell_codes[TOTAL_IC][12]; 
+    uint16_t aux_codes[TOTAL_IC][6];
+   
+    
     #define ERROR_VOLTAGE_LIMIT (10u)
     #define ERROR_TEMPERATURE_LIMIT (10u)
     #define FUSE_BAD_LIMIT (10u)
@@ -44,8 +50,6 @@
     #define N_OF_TEMP (60u)
     #define N_OF_NODE (6u)
     #define N_OF_STACK (3u)
-
-    //#define DEBUG_LCD 0
 
     #define OVER_TEMP (60u)             //now it just for debug purpose
     #define UNDER_TEMP (0u)

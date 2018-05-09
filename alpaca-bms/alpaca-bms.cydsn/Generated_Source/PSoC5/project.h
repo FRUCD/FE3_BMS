@@ -59,6 +59,8 @@
 #include "MUX_current.h"
 #include "timer_clock_1.h"
 #include "SOC_Timer.h"
+#include "CS_aliases.h"
+#include "CS.h"
 #include "LTC68_IntClock.h"
 #include "ADC_current_AMux.h"
 #include "ADC_current_Ext_CP_Clk.h"

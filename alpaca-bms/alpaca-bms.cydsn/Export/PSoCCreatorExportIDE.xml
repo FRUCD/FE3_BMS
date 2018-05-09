@@ -41,8 +41,6 @@
           <File BuildType="BUILD" Toolchain="">cell_interface.h</File>
           <File BuildType="BUILD" Toolchain="">current_sense.c</File>
           <File BuildType="BUILD" Toolchain="">current_sense.h</File>
-          <File BuildType="BUILD" Toolchain="">LTC68041.c</File>
-          <File BuildType="BUILD" Toolchain="">LTC68041.h</File>
           <File BuildType="BUILD" Toolchain="">WDT.h</File>
           <File BuildType="BUILD" Toolchain="">WDT.c</File>
           <File BuildType="BUILD" Toolchain="">can_manager.c</File>
@@ -52,6 +50,8 @@
           <File BuildType="BUILD" Toolchain="">uart-terminal.c</File>
           <File BuildType="BUILD" Toolchain="">uart-terminal.h</File>
           <File BuildType="BUILD" Toolchain="">BMS_monitor.c</File>
+          <File BuildType="BUILD" Toolchain="">LTC68042.c</File>
+          <File BuildType="BUILD" Toolchain="">LTC68042.h</File>
           <File BuildType="BUILD" Toolchain="">BMS_monitor.h</File>
         </Files>
       </Folder>
@@ -207,6 +207,9 @@
           <File BuildType="BUILD" Toolchain="">Generated_Source\PSoC5\cycodeshareexport.ld</File>
           <File BuildType="BUILD" Toolchain="">Generated_Source\PSoC5\cy_em_eeprom.c</File>
           <File BuildType="BUILD" Toolchain="">Generated_Source\PSoC5\cy_em_eeprom.h</File>
+          <File BuildType="BUILD" Toolchain="">Generated_Source\PSoC5\CS_aliases.h</File>
+          <File BuildType="BUILD" Toolchain="">Generated_Source\PSoC5\CS.c</File>
+          <File BuildType="BUILD" Toolchain="">Generated_Source\PSoC5\CS.h</File>
         </Files>
       </Folder>
       <Folder BuildType="STRICT" Path="C:\Users\Schuyler\Documents\Formula\FE3_BMS\alpaca-bms\alpaca-bms.cydsn\Export\ARM_GCC_Generic">
