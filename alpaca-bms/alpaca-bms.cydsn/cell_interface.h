@@ -20,8 +20,8 @@
    
     
     // Stores cell data
-    uint16_t cell_codes[TOTAL_IC][12]; 
-    uint16_t aux_codes[TOTAL_IC][6];
+    uint16_t cell_codes[IC_PER_BUS][12]; 
+    uint16_t aux_codes[IC_PER_BUS][6];
    
     
     #define ERROR_VOLTAGE_LIMIT (10u)
@@ -29,7 +29,8 @@
     #define FUSE_BAD_LIMIT (10u)
     #define BAD_FILTER_LIMIT (10u)
     
-    #define CELL_ENABLE (0x1cf)
+    #define CELL_ENABLE_HIGH (0x7DF)
+    #define CELL_ENABLE_LOW (0x3DF)
     #define OVER_VOLTAGE (4500u)
     #define UNDER_VOLTAGE (2800u)
     #define STACK_VOLT_DIFF_LIMIT (9000u)   //9 volt
@@ -44,18 +45,19 @@
     #define SOC_FULL_CAP (75000*3600u)     //let's say, 75,000mAh
     #define SOC_FULL      (115000u)   //when voltage reaches 115V, consider it full
     #define BALANCE_THRESHOLD (15u)
-    #define VOLTAGE_READING_OFFSET  (58u) // add 58 mv to both the 0th and 13th cells
     
-    #define N_OF_CELL (84u)
-    #define N_OF_TEMP (60u)
-    #define N_OF_NODE (6u)
-    #define N_OF_STACK (3u)
+    #define N_OF_CELL (168u)
+    #define N_OF_TEMP (84u) // Monitoring the CELLS
+    #define N_OF_TEMP_BOARD (36u) // Number of thermistors monitoring the BOARD
+
+    #define N_OF_SUBPACK (6u)
+    #define N_OF_BUSSES (2u)
 
     #define OVER_TEMP (60u)             //now it just for debug purpose
     #define UNDER_TEMP (0u)
 
     #define THERM_CELL (0u)
-    #define THERM_BOARD (0u)
+    #define THERM_BOARD (1u)
 
 
     // bms_status
@@ -114,26 +116,29 @@ typedef struct
 
 typedef struct
 {
-  volatile BAT_CELL_t *cells[14];
-  volatile BAT_TEMP_t *temps[10];
+  volatile BAT_CELL_t *cells[N_OF_CELL / N_OF_SUBPACK]; // Cells per subpack
+  volatile BAT_TEMP_t *temps[N_OF_TEMP / N_OF_SUBPACK]; // 14 Thermistors per subpack (measuring cells)
+  volatile BAT_TEMP_t *board_temps[N_OF_TEMP_BOARD / N_OF_SUBPACK];
   volatile uint8 high_temp;
   volatile uint16_t over_temp;
   volatile uint16_t under_temp;
   volatile uint16_t over_voltage;
   volatile uint16_t under_voltage;
-}BAT_NODE_t;
+  volatile uint32_t voltage;
+  volatile uint8_t bad_counter;
+}BAT_SUBPACK_t;
+
 
 typedef struct 
 {
-  volatile BAT_NODE_t *nodes[2];
+  volatile BAT_SUBPACK_t *subpacks[3];
   volatile uint32_t voltage;
-  volatile uint8_t bad_counter;
-}BAT_STACK_t;
+}BAT_BUS_t;
+
 
 typedef struct
 {
-  volatile BAT_STACK_t *stacks[3];
-  volatile BAT_NODE_t *nodes[6];
+  volatile BAT_BUS_t *busses[2];
   volatile uint32_t voltage;
   volatile int16_t current;
   volatile uint8_t fuse_fault;
@@ -231,7 +236,7 @@ uint8_t get_cell_temp();
  * @param 1 input parameters, which is raw cell_codes.
  * @return NULL.
  */
-void update_volt(volatile uint16_t cell_codes[TOTAL_IC][12]);
+void update_volt(volatile uint16_t cell_codes[IC_PER_BUS][12]);
 
 /**
  * @check voltage and detect error
@@ -247,7 +252,7 @@ void check_volt();
  * @param 1 input parameters, which is raw aux_codes.
  * @return NULL.
  */
-void update_temp(volatile uint16_t aux_codes[TOTAL_IC][6]);
+void update_temp(volatile uint16_t aux_codes[IC_PER_BUS][6]);
 
 /**
  * @check temperature and detect error

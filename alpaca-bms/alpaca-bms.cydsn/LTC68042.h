@@ -50,7 +50,7 @@ Copyright 2013 Linear Technology Corp. (LTC)
 #include "project.h"
 
 // Battery characteristics
-#define TOTAL_IC 1
+#define IC_PER_BUS 9 // 6811 per bus
 
 #ifndef LTC6804_CS
 #define LTC6804_CS QUIKEVAL_CS

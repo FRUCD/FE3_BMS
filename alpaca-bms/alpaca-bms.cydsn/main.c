@@ -27,6 +27,7 @@ typedef enum
 
 volatile uint8_t CAN_UPDATE_FLAG=0;
 extern volatile BAT_PACK_t bat_pack;
+extern BAT_SUBPACK_t bat_subpack[N_OF_SUBPACK];
 extern volatile BAT_ERR_t* bat_err_array;
 extern volatile uint8_t bat_err_index;
 extern volatile uint8_t bat_err_index_loop;
@@ -65,6 +66,8 @@ void process_event(){
     CyDelay(10);
 
     // send temperature
+    /*
+    // TEST_DAY_1
     can_send_temp(bat_pack.nodes[0]->high_temp,
 				bat_pack.nodes[1]->high_temp,
                 bat_pack.nodes[2]->high_temp,
@@ -73,7 +76,7 @@ void process_event(){
                 bat_pack.nodes[5]->high_temp,
 				bat_pack.HI_temp_node,
 				bat_pack.HI_temp_c);
-    
+    */
     // send current
     CyDelay(10);
     can_send_current(bat_pack.current);
@@ -83,6 +86,7 @@ void process_event(){
 }
 
 void DEBUG_send_cell_voltage(){
+    /*
     uint8_t node, cell;
     for (node = 0; node< N_OF_NODE; node++){
         cell = 0;
@@ -93,9 +97,11 @@ void DEBUG_send_cell_voltage(){
             CyDelay(1);
         }
     }
+    */
 }
 
 void DEBUG_send_temp(){
+    /*
     uint8_t node, temp;
     for (node = 0; node< N_OF_NODE; node++){
         temp = 0;
@@ -108,9 +114,11 @@ void DEBUG_send_temp(){
             CyDelay(1);
         }
     }
+    */
 }
 
 void DEBUG_send_current(){
+    /*
     uint8_t node, temp;
     for (node = 0; node< N_OF_NODE; node++){
         temp = 0;
@@ -123,6 +131,7 @@ void DEBUG_send_current(){
             CyDelay(1);
         }
     }
+    */
 }
 
 
@@ -130,12 +139,10 @@ void process_failure_helper(BAT_ERR_t err){
 	switch(err.err){
 		case CELL_VOLT_OVER:
         	can_send_volt(((err.bad_node<<8) | err.bad_cell),
-			    bat_pack.nodes[err.bad_node]->cells[err.bad_cell]->voltage,
-				bat_pack.voltage);
+			    bat_subpack[err.bad_node].cells[err.bad_cell]->voltage, bat_pack.voltage);
 		case CELL_VOLT_UNDER:
 			can_send_volt(((err.bad_node<<8) | err.bad_cell),
-				bat_pack.nodes[err.bad_node]->cells[err.bad_cell]->voltage,
-				bat_pack.voltage);
+				bat_subpack[err.bad_node].cells[err.bad_cell]->voltage, bat_pack.voltage);
 			break;
 		
 		case PACK_TEMP_OVER:
@@ -149,7 +156,7 @@ void process_failure_helper(BAT_ERR_t err){
 
 void process_failure(){
 	uint8_t i=0;
-	// broadcast error in inverse chrognxxxical order
+	// broadcast error in inverse chronological order
 	if (bat_err_index_loop){
 		// start from bat_err_index back to 0
 		for (i=bat_err_index;i>=0;i--){
@@ -226,8 +233,8 @@ int main(void)
 			    check_cfg();  //CANNOT be finished, because 
 				
 		        get_cell_volt();// TODO Get voltage
-				check_stack_fuse(); // TODO: check if stacks are disconnected
-				get_cell_temp();// TODO Get temperature
+				//TESTDAY_2_TODO. check_stack_fuse(); // TODO: check if stacks are disconnected
+				//TESTDAY_1_TODO. get_cell_temp();// TODO Get temperature
                 
 				/*
                 // TODO: Calculate SOC
@@ -235,7 +242,7 @@ int main(void)
 			    bat_soc = get_soc(); // TODO calculate SOC()
 				// because it is normal mode, just set a median length current reading interval
 			    */
-                update_soc();
+                //SKY_TODO update_soc();
 
                 /*
                 //Uncomment all of this to blance
@@ -246,9 +253,6 @@ int main(void)
                 
                 CyDelay(5000);
                 */
-                
-                //DEBUG_balancing_on(); // All the discharge circuits will be turned on
-                //DEBUG_balancing_on(); // All the discharge circuits will be turned on
                 
                 bat_health_check();
                 if (bat_pack.health == FAULT){

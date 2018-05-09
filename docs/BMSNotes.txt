@@ -1,0 +1,8 @@
+Missing cells:
+	BMS IC1 - C6, C11, C12
+	BMS IC2 - C6, C11, C12
+	BMS IC3 - C6, C12
+
+6 slaves in the system. 3 ICs per board. 
+
+CY8C5488AXI-LP120 is being used for slave!

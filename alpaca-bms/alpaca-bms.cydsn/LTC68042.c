@@ -958,7 +958,7 @@ CyDelayUs(200);
 void LTC6804_init_cfg()
 {
   uint8_t i = 0;
-  for(i = 0; i<TOTAL_IC;i++)
+  for(i = 0; i<IC_PER_BUS;i++)
   {
     tx_cfg[i][0] = 0xFE; // See notes and page 59 for reasoning.
     tx_cfg[i][1] = 0x00; 

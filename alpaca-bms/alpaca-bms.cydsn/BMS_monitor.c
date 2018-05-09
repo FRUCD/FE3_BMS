@@ -19,7 +19,7 @@ void monitor_display_data() {
 bool monitor_showCellDataRoutine() {
 	uint8_t i = 0;
 	uint8_t j = 0;
-	for (i = 0; i < TOTAL_IC; i++) {
+	for (i = 0; i < IC_PER_BUS; i++) {
 			sprintf(buf, "Cell %d:\n", i);
 		    while (USBUART_CDCIsReady() == 0u);
 		    USBUART_PutString(buf);

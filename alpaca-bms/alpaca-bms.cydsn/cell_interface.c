@@ -21,9 +21,9 @@ uint8_t fatal_err;
 // FE3 new structure
 BAT_CELL_t bat_cell[N_OF_CELL];
 BAT_TEMP_t bat_temp[N_OF_TEMP];
+BAT_SUBPACK_t bat_subpack[N_OF_SUBPACK];
+BAT_BUS_t bat_bus[N_OF_BUSSES];
 volatile BAT_ERR_t bat_err;
-BAT_NODE_t bat_node[N_OF_NODE];
-BAT_STACK_t bat_stack[N_OF_STACK];
 BAT_PACK_t bat_pack;
 
 extern volatile uint8_t CAN_DEBUG;
@@ -45,7 +45,7 @@ void  bms_init(){
     SS_SetDriveMode(SS_DM_RES_UP);
     LTC68_Start();
     LTC6804_initialize();
-    LTC6804_wrcfg(TOTAL_IC,tx_cfg);
+    LTC6804_wrcfg(IC_PER_BUS,tx_cfg);
 }
 
 
@@ -56,66 +56,63 @@ void  bms_init(){
  * @return 1 if everything is OK. 0 for hard failure.
  */
 void mypack_init(){
-    uint8_t stack=0;
-    uint8_t cell=0;
-    uint8_t node=0;
-    uint8_t temp=0;
+    
+    uint8_t cell = 0;
+    uint8_t subpack = 0;
+    uint8_t bus = 0;
+    uint8_t temp = 0;
     bat_err_index = 0;
     bat_err_index_loop = 0;
 
-    // FE3 new data structure
     // initialize cells and temps
-    // with ordered to help debugging
-    cell = 0;
-    for (cell = 0; cell<N_OF_CELL;cell++){
+    
+    for (cell = 0; cell < N_OF_CELL; cell++){
         bat_cell[cell].voltage = cell;
         bat_cell[cell].bad_counter = 0;
     }
-    temp = 0;
-    for (temp = 0; temp < N_OF_TEMP ; temp++){
+    for (temp = 0; temp < N_OF_TEMP; temp++){
         bat_temp[temp].temp_c = (uint8_t)temp;
         bat_temp[temp].temp_raw = (uint16_t)temp;
         bat_temp[temp].bad_counter = 0;
         bat_temp[temp].bad_type = 0;
-        
-        if ((temp%10) < 5){
-            bat_temp[temp].type = THERM_BOARD;
-        }
-        else{
-            bat_temp[temp].type = THERM_CELL;
-        }
+        bat_temp[temp].type = THERM_CELL;
+    }
+    for (temp = 0; temp < N_OF_TEMP_BOARD; temp++){
+        bat_temp[temp].temp_c = (uint8_t)temp;
+        bat_temp[temp].temp_raw = (uint16_t)temp;
+        bat_temp[temp].bad_counter = 0;
+        bat_temp[temp].bad_type = 0;
+        bat_temp[temp].type = THERM_BOARD;
     }
 
-    // register node
-    node = 0;
-    for (node = 0; node < N_OF_NODE; node++){
-        cell = 0;
-        temp = 0;
-        for (cell = 0; cell < 14; cell++){    
-            bat_node[node].cells[cell] = &(bat_cell[node*14+cell]);
+    for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
+        for (cell = 0; cell < (N_OF_CELL / N_OF_SUBPACK); cell++){    
+            bat_subpack[subpack].cells[cell] = &(bat_cell[subpack*(N_OF_CELL / N_OF_SUBPACK)+cell]);
         }
-        for (temp = 0; temp < 10; temp++){
-            bat_node[node].temps[temp] = &(bat_temp[node*10+temp]);
+        for (temp = 0; temp < (N_OF_TEMP / N_OF_SUBPACK); temp++){
+            bat_subpack[subpack].temps[temp] = &(bat_temp[subpack*(N_OF_TEMP / N_OF_SUBPACK)+temp]);
         }
-        bat_node[node].over_temp = 0;
-        bat_node[node].under_temp = 0;
-        bat_node[node].over_voltage = 0;
-        bat_node[node].under_voltage = 0;
+        for (temp = 0; temp < (N_OF_TEMP_BOARD / N_OF_SUBPACK); temp++){
+            bat_subpack[subpack].board_temps[temp] = &(bat_temp[subpack*(N_OF_TEMP_BOARD / N_OF_SUBPACK)+temp]);
+        }
+        
+        bat_subpack[subpack].over_temp = 0;
+        bat_subpack[subpack].under_temp = 0;
+        bat_subpack[subpack].over_voltage = 0;
+        bat_subpack[subpack].under_voltage = 0;
+        bat_subpack[subpack].voltage = subpack; // non zero for debugging
     }
-    // register stack
-    stack = 0;
-    for (stack = 0;stack < N_OF_STACK; stack++){
-        bat_stack[stack].nodes[0] = &(bat_node[stack*2]);
-        bat_stack[stack].nodes[1] = &(bat_node[stack*2+1]);
-        bat_stack[stack].voltage = stack;
+    
+    // Register busses
+    for (bus = 0; bus < N_OF_BUSSES; bus++) {
+        for (subpack = 0; subpack < (N_OF_SUBPACK / N_OF_BUSSES); subpack++) {
+            bat_bus[bus].subpacks[subpack] = &(bat_subpack[bus * (N_OF_SUBPACK / N_OF_BUSSES) + subpack]);   
+        }
     }
-    // register pac
-    stack = 0;
-    for (stack = 0; stack< 3; stack++){
-        bat_pack.stacks[stack] = &(bat_stack[stack]);
-    }
-    for (node = 0; node<6; node++){
-        bat_pack.nodes[node] = &(bat_node[node]);
+    
+    // Register pack
+    for (bus = 0; bus < N_OF_BUSSES; bus++){
+        bat_pack.busses[bus] = &(bat_bus[bus]);
     }
     
     // get SOC
@@ -142,8 +139,6 @@ void mypack_init(){
     bat_pack.LO_voltage = 0;
     bat_pack.time_stamp = 0;
     bat_pack.SOC_percent = 0;
-    
-    
 }
 
 
@@ -191,7 +186,7 @@ uint8_t get_cell_volt(){
     LTC6804_adcv();
     CyDelay(10);
     wakeup_sleep();
-    error = LTC6804_rdcv(0, TOTAL_IC,cell_codes); // Set to read back all cell voltage registers
+    error = LTC6804_rdcv(0, IC_PER_BUS,cell_codes); // Set to read back all cell voltage registers
     if (error == -1)
     {
         #ifdef DEBUG_LCD
@@ -208,7 +203,7 @@ uint8_t get_cell_volt(){
     check_volt();
 
     
-    return 0;
+    return error;
 }// get_cell_volt()
 
 
@@ -220,7 +215,7 @@ uint8_t SKY_get_cell_volt(){
     LTC6804_adcv();
     CyDelay(10); 
     wakeup_sleep();
-    error = LTC6804_rdcv(0, TOTAL_IC,cell_codes); // Set to read back all cell voltage registers
+    error = LTC6804_rdcv(0, IC_PER_BUS,cell_codes); // Set to read back all cell voltage registers
     if (error == -1)
     {
         #ifdef DEBUG_LCD
@@ -242,7 +237,7 @@ uint8_t get_cell_temp(){
     uint8_t redundant=10;
     while (redundant>0){   
         //read 10 time at most
-        error = LTC6804_rdaux(0,TOTAL_IC,aux_codes); // Set to read back all aux registers
+        error = LTC6804_rdaux(0,IC_PER_BUS,aux_codes); // Set to read back all aux registers
         //DEBUG
         error=0;
         if (error == 0)
@@ -331,80 +326,69 @@ uint8_t check_cells(){
 }// check_cells()
 
 
-void update_volt(volatile uint16_t cell_codes[TOTAL_IC][12]){
-    uint8_t cell=0;
-    uint8_t raw_cell=0;
+void update_volt(volatile uint16_t cell_codes[IC_PER_BUS][12]){
+    uint8_t cell = 0;
+    uint8_t raw_cell = 0;
     uint8_t node = 0;
-    uint8_t ic=0;
-    uint8_t stack=0;
+    uint8_t ic = 0;
+    uint8_t subpack = 0;
+    uint8_t bus = 0;
     uint32_t temp_volt;
-
-    // 2/9/2017 Added voltage offset for the first and last cell of each node
-
-    for (ic=0;ic<TOTAL_IC;ic++){
-        for (raw_cell=0;raw_cell<12;raw_cell++){
-            if ((CELL_ENABLE & (0x1<<raw_cell))){
-                int temp = cell % (N_OF_CELL / N_OF_NODE);       
-                if (temp == 0 || temp == 13)
-                    cell_codes[ic][raw_cell] += VOLTAGE_READING_OFFSET*10;
-                cell++;            
-            }
-        }
-    } 
-    cell = 0;
-    /*
-    int i = 0;
-    for (i = 0; i < 84; i++){
-        int temp = i % (N_OF_CELL / N_OF_NODE);
-        if (temp == 0 || temp == 13)
-            bat_cell[i].voltage += VOLTAGE_READING_OFFSET;
-    }
-    */
     
+    
+    // CELL ENABLE MUST BE UPDATED
     //log in voltage data
-    for (ic=0;ic<TOTAL_IC;ic++){
+    for (ic=0;ic<IC_PER_BUS;ic++){
         for (raw_cell=0;raw_cell<12;raw_cell++){
-            if ((CELL_ENABLE & (0x1<<raw_cell))){
-                bat_cell[cell].voltage = cell_codes[ic][raw_cell]/10;  //only record in mV not in 0.1mV
-                cell++;
+            if (ic == 2 || ic == 5 || ic == 8) { // These ICs have different cells used
+                if ((CELL_ENABLE_HIGH & (0x1<<raw_cell))){
+                    bat_cell[cell].voltage = cell_codes[ic][raw_cell]/10;  //only record in mV not in 0.1mV
+                    cell++;
+                }    
+            } else {
+                if ((CELL_ENABLE_LOW & (0x1<<raw_cell))){
+                    bat_cell[cell].voltage = cell_codes[ic][raw_cell]/10;  //only record in mV not in 0.1mV
+                    cell++;
+                } 
             }
         }
     }
 
-    // voltage_compensation();
-    
-    // FE3 update 3 stacks voltage
-    node = 0;
-    cell = 0;
-    stack = 0;
+    // Update subpack voltages
     temp_volt = 0;
-    for (stack = 0; stack<3; stack++){
+    for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
         temp_volt = 0;
-        for (node = 0; node<2; node++){
-            for (cell = 0; cell<14; cell++){
-                temp_volt += (uint32_t)(bat_stack[stack].nodes[node]->cells[cell]->voltage);
-            }
+        for (cell = 0; cell< (N_OF_CELL / N_OF_SUBPACK); cell++){
+            temp_volt += (uint32_t)(bat_subpack[subpack].cells[cell]->voltage);
         }
-        bat_stack[stack].voltage = temp_volt;
+        bat_subpack[subpack].voltage = temp_volt;
     }
 
-    // FE3 update pack voltage
-    stack = 0;
+    // Update bus voltages
     temp_volt = 0;
-    for (stack = 0; stack<3; stack++){
-        temp_volt += bat_pack.stacks[stack]->voltage;
+    for (bus = 0; bus < N_OF_BUSSES; bus++){
+        temp_volt = 0;
+        for (subpack = 0; subpack < (N_OF_SUBPACK / N_OF_BUSSES); subpack++){
+            temp_volt += (uint32_t)(bat_bus[bus].subpacks[subpack]->voltage);
+        }
+        bat_bus[bus].voltage = temp_volt / 3;
     }
-    bat_pack.voltage = temp_volt/3;
-
+    
+    // Update pack voltage
+    temp_volt = 0;
+    for (bus = 0; bus < N_OF_BUSSES; bus++){
+        temp_volt += bat_pack.busses[bus]->voltage;
+    }
+    bat_pack.voltage = temp_volt / 2; // Average the voltage of the busses for pack voltage
 }
 
 void check_volt(){
     uint8_t cell = 0;
-    uint8_t node = 0;
+    uint8_t subpack = 0;
     uint16_t voltage16 = 0;
 
     // update each cell
-    for (cell = 0; cell<N_OF_CELL; cell++){
+    for (cell = 0; cell < N_OF_CELL; cell++){
         voltage16 = bat_cell[cell].voltage;
         if (voltage16 > (uint16_t)OVER_VOLTAGE){
             bat_cell[cell].bad_counter++;
@@ -413,47 +397,47 @@ void check_volt(){
             bat_cell[cell].bad_counter++;
             bat_cell[cell].bad_type = 0;
         }else{
-            if (bat_cell[cell].bad_counter>0){
+            if (bat_cell[cell].bad_counter > 0){
                 bat_cell[cell].bad_counter--;
             }           
         }
     }
 
     // update node
-    for (node = 0; node< N_OF_NODE; node++){
-        for (cell = 0; cell<14; cell++){
-            if (bat_node[node].cells[cell]->bad_counter > ERROR_VOLTAGE_LIMIT){
-                if (bat_node[node].cells[cell]->bad_type == 0){
-                    bat_node[node].under_voltage |= (1u<<cell);
+    for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
+        for (cell = 0; cell < (N_OF_CELL / N_OF_SUBPACK); cell++){
+            if (bat_subpack[subpack].cells[cell]->bad_counter > ERROR_VOLTAGE_LIMIT){
+                if (bat_subpack[subpack].cells[cell]->bad_type == 0){
+                    bat_subpack[subpack].under_voltage |= (1u<<cell);
                 }else{
-                    bat_node[node].over_voltage |= (1u<<cell);
+                    bat_subpack[subpack].over_voltage |= (1u<<cell);
                 }
             }
         }
     }
 
     // update pack of cell voltage error
-    for (node = 0; node < N_OF_NODE; node++){
-        if (bat_pack.nodes[node]->over_voltage != 0){
+    for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
+        if (bat_subpack[subpack].over_voltage != 0){
             bat_pack.status |= CELL_VOLT_OVER;
-            bat_err_add(CELL_VOLT_OVER, bat_node[node].over_voltage, node);
+            bat_err_add(CELL_VOLT_OVER, bat_subpack[subpack].over_voltage, subpack);
         }
 
-        if (bat_pack.nodes[node]->under_voltage != 0){
+        if (bat_subpack[subpack].under_voltage != 0){
             bat_pack.status  |= CELL_VOLT_UNDER;
-            bat_err_add(CELL_VOLT_UNDER, bat_node[node].under_voltage, node);
+            bat_err_add(CELL_VOLT_UNDER, bat_subpack[subpack].under_voltage, subpack);
         }
     }
     
-    // find the max voltage and mini vltage
+    // Find the max voltage and min voltage
     uint16_t max_voltage = bat_cell[0].voltage;
     uint16_t min_voltage = bat_cell[0].voltage;
     cell=0;
-    for(cell=0;cell<N_OF_CELL;cell++){
-        if (max_voltage<bat_cell[cell].voltage){
+    for(cell = 0; cell < N_OF_CELL; cell++){
+        if (max_voltage < bat_cell[cell].voltage){
             max_voltage = bat_cell[cell].voltage;
         }
-        if(min_voltage>bat_cell[cell].voltage){
+        if(min_voltage > bat_cell[cell].voltage){
             min_voltage = bat_cell[cell].voltage;
         }
     }
@@ -465,7 +449,7 @@ void check_volt(){
                 
 
 
-void update_temp(volatile uint16_t aux_codes[TOTAL_IC][6]){
+void update_temp(volatile uint16_t aux_codes[IC_PER_BUS][6]){
     uint8_t ic=0;
     uint16_t temp;
     uint8_t i=0;
@@ -491,44 +475,11 @@ void update_temp(volatile uint16_t aux_codes[TOTAL_IC][6]){
 
 
 void check_temp(){
+        /*
+    // TEST_DAY_1
     uint8_t temp=0;
     uint8_t node=0;
     uint16_t temp_c=0;
-    
-    // ignore the known broken thermistors
-    //    if (node == 3 || node == 17 || node == 27){
-    
-/*  Tony's Old ones
-    bat_temp[3].temp_raw = bat_temp[2].temp_raw;
-    bat_temp[3].temp_c = bat_temp[2].temp_c;
-    
-    bat_temp[17].temp_raw = bat_temp[16].temp_raw;
-    bat_temp[17].temp_c = bat_temp[16].temp_c;
-    
-    bat_temp[27].temp_raw = bat_temp[26].temp_raw;
-    bat_temp[27].temp_c = bat_temp[26].temp_c;
-    
-    bat_temp[51].temp_raw = bat_temp[50].temp_raw;
-    bat_temp[51].temp_c = bat_temp[50].temp_c;
-    
-    bat_temp[57].temp_raw = bat_temp[56].temp_raw;
-    bat_temp[57].temp_c = bat_temp[56].temp_c;
-*/    
-    
-    /*
-    // Sirius's button cell test bench ignore
-    bat_temp[7].temp_raw = bat_temp[6].temp_raw;
-    bat_temp[7].temp_c = bat_temp[6].temp_c;
-    
-    bat_temp[11].temp_raw = bat_temp[10].temp_raw;
-    bat_temp[11].temp_c = bat_temp[10].temp_c;
-    
-    bat_temp[17].temp_raw = bat_temp[10].temp_raw;
-    bat_temp[17].temp_c = bat_temp[10].temp_c;
-    
-    bat_temp[23].temp_raw = bat_temp[22].temp_raw;
-    bat_temp[23].temp_c = bat_temp[22].temp_c;
-    */
     
     // 2/4/2016 Measurement on actual battery pack
     // 0,7,20,21,27,30,33 are dead
@@ -624,11 +575,13 @@ void check_temp(){
             bat_err_add(PACK_TEMP_UNDER, bat_node[node].under_temp, node);
         }
     }
+    */
 }
 
 
 
-
+/*
+// TEST_DAY_2
 void check_stack_fuse()
 {
 	uint8_t stack=0;
@@ -696,9 +649,9 @@ void check_stack_fuse()
 		}  
 	}
 }
+*/
 
-
-void bat_err_add(uint16_t err, uint8_t bad_cell, uint8_t bad_node){
+void bat_err_add(uint16_t err, uint8_t bad_cell, uint8_t bad_subpack){
     bat_pack.health = FAULT; 
     /* 
     * Sirius: I know this set-to-fault is redundant with the check in bat_health_check(), 
@@ -712,7 +665,7 @@ void bat_err_add(uint16_t err, uint8_t bad_cell, uint8_t bad_node){
         for (i=0;i<100;i++){
             if (err == bat_err_array[i].err
              || bad_cell == bat_err_array[i].bad_cell
-             || bad_node == bat_err_array[i].bad_node){
+             || bad_subpack == bat_err_array[i].bad_node){
                 return;
             }
         }
@@ -720,7 +673,7 @@ void bat_err_add(uint16_t err, uint8_t bad_cell, uint8_t bad_node){
         for (i=0;i<bat_err_index;i++){
             if (err == bat_err_array[i].err
              || bad_cell == bat_err_array[i].bad_cell
-             || bad_node == bat_err_array[i].bad_node){
+             || bad_subpack == bat_err_array[i].bad_node){
                 return;
             }
         }
@@ -733,11 +686,9 @@ void bat_err_add(uint16_t err, uint8_t bad_cell, uint8_t bad_node){
         bat_err_index++;
     }
 
-    // because when this function been called, it must be a serious problem that is err
-
     bat_err_array[bat_err_index].err = err;
     bat_err_array[bat_err_index].bad_cell = bad_cell;
-    bat_err_array[bat_err_index].bad_node = bad_node;
+    bat_err_array[bat_err_index].bad_node = bad_subpack;
 
     return;
 }
