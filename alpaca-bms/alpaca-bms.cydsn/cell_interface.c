@@ -22,7 +22,6 @@ uint8_t fatal_err;
 BAT_CELL_t bat_cell[N_OF_CELL];
 BAT_TEMP_t bat_temp[N_OF_TEMP];
 BAT_SUBPACK_t bat_subpack[N_OF_SUBPACK];
-BAT_BUS_t bat_bus[N_OF_BUSSES];
 volatile BAT_ERR_t bat_err;
 BAT_PACK_t bat_pack;
 
@@ -103,16 +102,9 @@ void mypack_init(){
         bat_subpack[subpack].voltage = subpack; // non zero for debugging
     }
     
-    // Register busses
-    for (bus = 0; bus < N_OF_BUSSES; bus++) {
-        for (subpack = 0; subpack < (N_OF_SUBPACK / N_OF_BUSSES); subpack++) {
-            bat_bus[bus].subpacks[subpack] = &(bat_subpack[bus * (N_OF_SUBPACK / N_OF_BUSSES) + subpack]);   
-        }
-    }
-    
     // Register pack
-    for (bus = 0; bus < N_OF_BUSSES; bus++){
-        bat_pack.busses[bus] = &(bat_bus[bus]);
+    for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
+        bat_pack.subpacks[subpack] = &(bat_subpack[subpack]);
     }
     
     // get SOC
@@ -180,7 +172,6 @@ void check_chips(){
 
 uint8_t get_cell_volt(){
     LTC68_ClearFIFO();
-   // DEBUG_UART_PutString("Enter GET_CELL_VOLT\n");
     int error;
     wakeup_sleep();
     LTC6804_adcv();
@@ -332,12 +323,9 @@ void update_volt(volatile uint16_t cell_codes[IC_PER_BUS][12]){
     uint8_t node = 0;
     uint8_t ic = 0;
     uint8_t subpack = 0;
-    uint8_t bus = 0;
     uint32_t temp_volt;
     
-    
-    // CELL ENABLE MUST BE UPDATED
-    //log in voltage data
+    // Update cell voltages
     for (ic=0;ic<IC_PER_BUS;ic++){
         for (raw_cell=0;raw_cell<12;raw_cell++){
             if (ic == 2 || ic == 5 || ic == 8) { // These ICs have different cells used
@@ -354,32 +342,17 @@ void update_volt(volatile uint16_t cell_codes[IC_PER_BUS][12]){
         }
     }
 
-    // Update subpack voltages
+    // Update subpack and pack voltages
     temp_volt = 0;
+    uint32_t temp_pack_volt = 0;
     for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
-        temp_volt = 0;
         for (cell = 0; cell< (N_OF_CELL / N_OF_SUBPACK); cell++){
             temp_volt += (uint32_t)(bat_subpack[subpack].cells[cell]->voltage);
         }
         bat_subpack[subpack].voltage = temp_volt;
+        temp_pack_volt += temp_volt;
     }
-
-    // Update bus voltages
-    temp_volt = 0;
-    for (bus = 0; bus < N_OF_BUSSES; bus++){
-        temp_volt = 0;
-        for (subpack = 0; subpack < (N_OF_SUBPACK / N_OF_BUSSES); subpack++){
-            temp_volt += (uint32_t)(bat_bus[bus].subpacks[subpack]->voltage);
-        }
-        bat_bus[bus].voltage = temp_volt / 3;
-    }
-    
-    // Update pack voltage
-    temp_volt = 0;
-    for (bus = 0; bus < N_OF_BUSSES; bus++){
-        temp_volt += bat_pack.busses[bus]->voltage;
-    }
-    bat_pack.voltage = temp_volt / 2; // Average the voltage of the busses for pack voltage
+    bat_pack.voltage = temp_volt / N_OF_SUBPACK;   
 }
 
 void check_volt(){
@@ -387,7 +360,7 @@ void check_volt(){
     uint8_t subpack = 0;
     uint16_t voltage16 = 0;
 
-    // update each cell
+    // Check each cell for errors
     for (cell = 0; cell < N_OF_CELL; cell++){
         voltage16 = bat_cell[cell].voltage;
         if (voltage16 > (uint16_t)OVER_VOLTAGE){
@@ -403,7 +376,7 @@ void check_volt(){
         }
     }
 
-    // update node
+    // Update subpacks for errors
     for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
         for (cell = 0; cell < (N_OF_CELL / N_OF_SUBPACK); cell++){
             if (bat_subpack[subpack].cells[cell]->bad_counter > ERROR_VOLTAGE_LIMIT){
@@ -416,7 +389,7 @@ void check_volt(){
         }
     }
 
-    // update pack of cell voltage error
+    // Update pack for errors
     for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
         if (bat_subpack[subpack].over_voltage != 0){
             bat_pack.status |= CELL_VOLT_OVER;

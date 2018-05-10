@@ -128,17 +128,9 @@ typedef struct
   volatile uint8_t bad_counter;
 }BAT_SUBPACK_t;
 
-
-typedef struct 
-{
-  volatile BAT_SUBPACK_t *subpacks[3];
-  volatile uint32_t voltage;
-}BAT_BUS_t;
-
-
 typedef struct
 {
-  volatile BAT_BUS_t *busses[2];
+  volatile BAT_SUBPACK_t *subpacks[6];
   volatile uint32_t voltage;
   volatile int16_t current;
   volatile uint8_t fuse_fault;

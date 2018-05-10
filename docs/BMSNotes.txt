@@ -6,3 +6,17 @@ Missing cells:
 6 slaves in the system. 3 ICs per board. 
 
 CY8C5488AXI-LP120 is being used for slave!
+
+IC set to 1 (should be 9)
+
+
+
+IC, Actual
+3.4827,
+
+1A - Fried psoc, good chips for data, but weird balancing thing??
+2A - Good psoc
+3A - 
+1B - Good chips
+2B - 
+3B - Good psoc

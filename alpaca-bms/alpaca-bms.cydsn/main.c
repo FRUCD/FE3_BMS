@@ -144,7 +144,6 @@ void process_failure_helper(BAT_ERR_t err){
 			can_send_volt(((err.bad_node<<8) | err.bad_cell),
 				bat_subpack[err.bad_node].cells[err.bad_cell]->voltage, bat_pack.voltage);
 			break;
-		
 		case PACK_TEMP_OVER:
 		case PACK_TEMP_UNDER:
 			// waiting for CAN mesg been defined clearly
@@ -179,7 +178,7 @@ void debugMain() {
     while(1) {
         // For debugging stay in here.
         CyDelay(500);
-        SKY_get_cell_volt();
+        get_cell_volt();
         //wakeup_sleep();
     }
 }
