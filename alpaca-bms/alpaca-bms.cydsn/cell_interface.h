@@ -18,12 +18,6 @@
     #include <project.h>
     #include "can_manager.h"
    
-    
-    // Stores cell data
-    uint16_t cell_codes[IC_PER_BUS][12]; 
-    uint16_t aux_codes[IC_PER_BUS][6];
-   
-    
     #define ERROR_VOLTAGE_LIMIT (10u)
     #define ERROR_TEMPERATURE_LIMIT (10u)
     #define FUSE_BAD_LIMIT (10u)
@@ -52,6 +46,13 @@
 
     #define N_OF_SUBPACK (6u)
     #define N_OF_BUSSES (2u)
+    
+    // Stores cell data
+    uint16_t cell_codes[IC_PER_BUS * N_OF_BUSSES][12]; 
+    uint16_t cell_codes_lower[IC_PER_BUS][12]; 
+    uint16_t cell_codes_higher[IC_PER_BUS][12]; 
+    
+    uint16_t aux_codes[IC_PER_BUS][6];
 
     #define OVER_TEMP (60u)             //now it just for debug purpose
     #define UNDER_TEMP (0u)

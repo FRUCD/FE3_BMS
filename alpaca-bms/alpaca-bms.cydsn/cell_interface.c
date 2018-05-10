@@ -172,19 +172,35 @@ void check_chips(){
 
 uint8_t get_cell_volt(){
     LTC68_ClearFIFO();
-    int error;
+    int error1 = 0;
+    int error2 = 0;
     wakeup_sleep();
     LTC6804_adcv();
     CyDelay(10);
     wakeup_sleep();
-    error = LTC6804_rdcv(0, IC_PER_BUS,cell_codes); // Set to read back all cell voltage registers
-    if (error == -1)
+    Select6820_Write(0);
+    error1 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_lower); // Set to read back all cell voltage registers
+    Select6820_Write(1);
+    error2 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_higher);
+    if (error1 == -1 || error2 == -1)
     {
         #ifdef DEBUG_LCD
             LCD_Position(0u,10u);
             LCD_PrintString("ERROR");
         #endif
        return 1;
+    }
+    
+    for (unsigned int i = 0; i < IC_PER_BUS; i++) {
+        for (int j = 0; j < 12; j++) {
+            cell_codes[i][j] = cell_codes_lower[i][j];
+        } 
+    }
+    
+    for (unsigned int i = 0; i < IC_PER_BUS; i++) {
+        for (int j = 0; j < 12; j++) {
+            cell_codes[i + IC_PER_BUS][j] = cell_codes_higher[i][j];
+        } 
     }
     
     //get information
@@ -194,29 +210,11 @@ uint8_t get_cell_volt(){
     check_volt();
 
     
-    return error;
-}// get_cell_volt()
-
-
-uint8_t SKY_get_cell_volt(){
-    LTC68_ClearFIFO();
-   // DEBUG_UART_PutString("Enter GET_CELL_VOLT\n");
-    int error;
-    wakeup_sleep();
-    LTC6804_adcv();
-    CyDelay(10); 
-    wakeup_sleep();
-    error = LTC6804_rdcv(0, IC_PER_BUS,cell_codes); // Set to read back all cell voltage registers
-    if (error == -1)
-    {
-        #ifdef DEBUG_LCD
-            LCD_Position(0u,10u);
-            LCD_PrintString("ERROR");
-        #endif
-       return 1;
+    if (error1 == -1 || error2 == -2) {
+        return -1;   
+    } else {
+        return 0;   
     }
-    
-    return error;
 }// get_cell_volt()
 
 uint8_t get_cell_temp(){
@@ -317,7 +315,7 @@ uint8_t check_cells(){
 }// check_cells()
 
 
-void update_volt(volatile uint16_t cell_codes[IC_PER_BUS][12]){
+void update_volt(volatile uint16_t cell_codes[IC_PER_BUS * N_OF_BUSSES][12]){
     uint8_t cell = 0;
     uint8_t raw_cell = 0;
     uint8_t node = 0;
@@ -326,9 +324,9 @@ void update_volt(volatile uint16_t cell_codes[IC_PER_BUS][12]){
     uint32_t temp_volt;
     
     // Update cell voltages
-    for (ic=0;ic<IC_PER_BUS;ic++){
+    for (ic = 0; ic < IC_PER_BUS * N_OF_BUSSES; ic++){
         for (raw_cell=0;raw_cell<12;raw_cell++){
-            if (ic == 2 || ic == 5 || ic == 8) { // These ICs have different cells used
+            if (ic == 2 || ic == 5 || ic == 8 || ic == 11 || ic == 14 || ic == 17) { // These ICs have different cells used
                 if ((CELL_ENABLE_HIGH & (0x1<<raw_cell))){
                     bat_cell[cell].voltage = cell_codes[ic][raw_cell]/10;  //only record in mV not in 0.1mV
                     cell++;
@@ -346,7 +344,7 @@ void update_volt(volatile uint16_t cell_codes[IC_PER_BUS][12]){
     temp_volt = 0;
     uint32_t temp_pack_volt = 0;
     for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
-        for (cell = 0; cell< (N_OF_CELL / N_OF_SUBPACK); cell++){
+        for (cell = 0; cell < (N_OF_CELL / N_OF_SUBPACK); cell++){
             temp_volt += (uint32_t)(bat_subpack[subpack].cells[cell]->voltage);
         }
         bat_subpack[subpack].voltage = temp_volt;
