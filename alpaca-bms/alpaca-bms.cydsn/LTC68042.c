@@ -954,6 +954,55 @@ void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
 CyDelayUs(200);
 }
 
+void my_spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port 
+					uint8_t tx_len, //length of the tx data arry
+					uint8_t *rx_data,//Input: array that will store the data read by the SPI port
+					uint8_t rx_len //Option: number of bytes to be read from the SPI port
+					)
+{
+    LTC68_ClearRxBuffer();
+    uint8_t i = 0;
+    uint8_t dummy_read;
+    for(i = 0; i < tx_len; i++)
+  {
+
+   LTC68_WriteTxData(tx_Data[i]);
+    CyDelay(100);
+    }
+   
+
+   for(i = 0; i < rx_len; i++)
+  {
+    //CyDelay(1);
+  LTC68_WriteTxData(0x00);
+    
+    }
+     
+
+    CyDelay(1);
+//    while(dummy_read!=rx_len+tx_len){
+//    dummy_read=(uint8_t)LTC68_GetRxBufferSize();
+//    };
+    while(! (LTC68_ReadTxStatus() & LTC68_STS_SPI_DONE)){
+    }
+
+
+    for(i = 0; i < tx_len; i++)
+    {
+        dummy_read = (uint8_t)LTC68_ReadRxData();
+    }
+
+    for(i = 0; i < rx_len; i++)
+    {
+        rx_data[i] = (uint8_t)LTC68_ReadRxData();
+
+    }
+
+
+
+CyDelayUs(200);
+}
+
 
 void LTC6804_init_cfg()
 {

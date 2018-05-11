@@ -216,8 +216,28 @@ uint8_t get_cell_volt(){
         return 0;   
     }
 }// get_cell_volt()
-
+uint8_t update_temp_1(uint8_t *t) {
+    return 0;   
+}
 uint8_t get_cell_temp(){
+    uint8_t command[3];
+    uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2];
+    
+    // PSOCs have addresses 9 through 11
+    for (uint8_t bus = 0; bus < N_OF_BUSSES; bus++) {
+        Select6820_Write(bus);
+        int address = 9;
+        for (int i = 0; i < 3; i++, address++) {
+            for (uint8_t j = 0; j < 3; j++)
+                command[j] = (0x80 | (address << 3)) + j;
+            my_spi_write_read(command, 3, rawTemp + (46 * i) + 
+                              (bus * (N_OF_TEMP + N_OF_TEMP_BOARD)), 46); // There are 69 thermistors on each bus, 2 bytes per reading
+        }
+    }
+    
+    update_temp(rawTemp);
+    
+    /*
     int error;
     wakeup_sleep();
     LTC6804_adax();
@@ -259,6 +279,7 @@ uint8_t get_cell_temp(){
         LCD_PrintString("OK");
     #endif
     return 0;
+    */
 }// get_cell_temp()
 
 
@@ -418,30 +439,39 @@ void check_volt(){
 }
 
                 
-
-
-void update_temp(volatile uint16_t aux_codes[IC_PER_BUS][6]){
-    uint8_t ic=0;
-    uint16_t temp;
-    uint8_t i=0;
-
-
-
-    // FE3 new data structure
-    // update node
-    temp = 0;
-    for (ic = 0; ic < 12; ic++){
-        for (i = 0; i < 5; i++){
-            bat_temp[temp].temp_raw = aux_codes[ic][i];
-            bat_temp[temp].temp_ref = aux_codes[ic][5];
-            bat_temp[temp].temp_c = (uint8_t)temp_transfer(aux_codes[ic][i], aux_codes[ic][5]);
-
-            temp++;
+// Convert mv to degrees C
+uint8_t mvToC(uint8_t mv) {
+    float B = 3428;
+    float Ti = 298.15;
+    
+    float numerator = Ti * B;
+    float denominator = (Ti * log(mv / (5000 - mv))) + B;
+    float out = (numerator / denominator) - 273.15;
+    
+    return (uint8_t)out;
+}
+void update_temp(volatile uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2]) {
+    uint8_t rawIndex = 0;
+    uint8_t batIndex = 0;
+    uint8_t boardIndex = 0;
+    uint32_t temp = 0;
+    
+    for (uint8_t board = 0; board < 6; board++) {
+        for (uint8_t cellTemp = 0; cellTemp < 14; cellTemp++) {
+            bat_temp[batIndex].temp_raw = rawTemp[rawIndex++] << 8; // Upper bits
+            bat_temp[batIndex].temp_raw |= rawTemp[rawIndex++];
+            bat_temp[batIndex].temp_c = mvToC(bat_temp[batIndex].temp_raw);
+            batIndex++;
+        }
+        for (uint8_t boardTemp = 0; boardTemp < 9; boardTemp++) {
+            /*
+            board_temp[boardIndex].temp_raw = rawTemp[rawIndex++] << 8; // Upper bits
+            board_temp[boardIndex].temp_raw |= rawTemp[rawIndex++];
+            boardIndex++;
+            */
+            rawIndex += 2; // TODO: Store board temps properly
         }
     }
-    
-    
-
 }
 
 

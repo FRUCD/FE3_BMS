@@ -42,7 +42,7 @@
     
     #define N_OF_CELL (168u)
     #define N_OF_TEMP (84u) // Monitoring the CELLS
-    #define N_OF_TEMP_BOARD (36u) // Number of thermistors monitoring the BOARD
+    #define N_OF_TEMP_BOARD (54u) // Number of thermistors monitoring the BOARD
 
     #define N_OF_SUBPACK (6u)
     #define N_OF_BUSSES (2u)
@@ -245,7 +245,7 @@ void check_volt();
  * @param 1 input parameters, which is raw aux_codes.
  * @return NULL.
  */
-void update_temp(volatile uint16_t aux_codes[IC_PER_BUS][6]);
+void update_temp(volatile uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2]);
 
 /**
  * @check temperature and detect error
@@ -312,6 +312,7 @@ uint8_t bat_health_check();
 void _SOC_log();
 void bat_balance();
 void DEBUG_balancing_on();
+uint8_t mvToC(uint8_t mv);
 
 uint8_t SKY_get_cell_volt();
 
