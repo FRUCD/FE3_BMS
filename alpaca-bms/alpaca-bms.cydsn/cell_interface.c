@@ -21,6 +21,7 @@ uint8_t fatal_err;
 // FE3 new structure
 BAT_CELL_t bat_cell[N_OF_CELL];
 BAT_TEMP_t bat_temp[N_OF_TEMP];
+BAT_TEMP_t board_temp[N_OF_TEMP_BOARD];
 BAT_SUBPACK_t bat_subpack[N_OF_SUBPACK];
 volatile BAT_ERR_t bat_err;
 BAT_PACK_t bat_pack;
@@ -44,7 +45,7 @@ void  bms_init(){
     SS_SetDriveMode(SS_DM_RES_UP);
     LTC68_Start();
     LTC6804_initialize();
-    LTC6804_wrcfg(IC_PER_BUS,tx_cfg);
+    LTC6804_wrcfg(IC_PER_BUS, tx_cfg);
 }
 
 
@@ -77,11 +78,11 @@ void mypack_init(){
         bat_temp[temp].type = THERM_CELL;
     }
     for (temp = 0; temp < N_OF_TEMP_BOARD; temp++){
-        bat_temp[temp].temp_c = (uint8_t)temp;
-        bat_temp[temp].temp_raw = (uint16_t)temp;
-        bat_temp[temp].bad_counter = 0;
-        bat_temp[temp].bad_type = 0;
-        bat_temp[temp].type = THERM_BOARD;
+        board_temp[temp].temp_c = (uint8_t)temp;
+        board_temp[temp].temp_raw = (uint16_t)temp;
+        board_temp[temp].bad_counter = 0;
+        board_temp[temp].bad_type = 0;
+        board_temp[temp].type = THERM_BOARD;
     }
 
     for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
@@ -92,7 +93,7 @@ void mypack_init(){
             bat_subpack[subpack].temps[temp] = &(bat_temp[subpack*(N_OF_TEMP / N_OF_SUBPACK)+temp]);
         }
         for (temp = 0; temp < (N_OF_TEMP_BOARD / N_OF_SUBPACK); temp++){
-            bat_subpack[subpack].board_temps[temp] = &(bat_temp[subpack*(N_OF_TEMP_BOARD / N_OF_SUBPACK)+temp]);
+            bat_subpack[subpack].board_temps[temp] = &(board_temp[subpack*(N_OF_TEMP_BOARD / N_OF_SUBPACK)+temp]);
         }
         
         bat_subpack[subpack].over_temp = 0;
@@ -178,9 +179,11 @@ uint8_t get_cell_volt(){
     LTC6804_adcv();
     CyDelay(10);
     wakeup_sleep();
-    Select6820_Write(0);
+    Select6820_Write(0); // Select a bus
+    //uint16_t *test = (uint16_t*)(&cell_codes[IC_PER_BUS]); // SHOULD PROBABLY REPLACE WITH SOMETHING LIKE 
+                                                             // instead of copying values from two arrays
     error1 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_lower); // Set to read back all cell voltage registers
-    Select6820_Write(1);
+    Select6820_Write(1); // Select a bus
     error2 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_higher);
     if (error1 == -1 || error2 == -1)
     {
@@ -216,9 +219,7 @@ uint8_t get_cell_volt(){
         return 0;   
     }
 }// get_cell_volt()
-uint8_t update_temp_1(uint8_t *t) {
-    return 0;   
-}
+
 uint8_t get_cell_temp(){
     uint8_t command[3];
     uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2];
@@ -365,6 +366,7 @@ void update_volt(volatile uint16_t cell_codes[IC_PER_BUS * N_OF_BUSSES][12]){
     temp_volt = 0;
     uint32_t temp_pack_volt = 0;
     for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
+        temp_volt = 0;
         for (cell = 0; cell < (N_OF_CELL / N_OF_SUBPACK); cell++){
             temp_volt += (uint32_t)(bat_subpack[subpack].cells[cell]->voltage);
         }
@@ -464,24 +466,28 @@ void update_temp(volatile uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2]) {
             batIndex++;
         }
         for (uint8_t boardTemp = 0; boardTemp < 9; boardTemp++) {
-            /*
+            
             board_temp[boardIndex].temp_raw = rawTemp[rawIndex++] << 8; // Upper bits
             board_temp[boardIndex].temp_raw |= rawTemp[rawIndex++];
+            board_temp[boardIndex].temp_c = mvToC(board_temp[boardIndex].temp_raw);
             boardIndex++;
-            */
-            rawIndex += 2; // TODO: Store board temps properly
+            
+            //rawIndex += 2; // TODO: Store board temps properly
         }
     }
 }
 
 
 void check_temp(){
-        /*
+        
     // TEST_DAY_1
     uint8_t temp=0;
-    uint8_t node=0;
+    uint8_t subpack=0;
+    uint8_t cell=0;
     uint16_t temp_c=0;
     
+    
+    /*
     // 2/4/2016 Measurement on actual battery pack
     // 0,7,20,21,27,30,33 are dead
     bat_temp[0].temp_raw = bat_temp[1].temp_raw;
@@ -504,50 +510,51 @@ void check_temp(){
     
     bat_temp[33].temp_raw = bat_temp[34].temp_raw;
     bat_temp[33].temp_c = bat_temp[34].temp_c;
+    */
     
     // check temp
-    for (node = 0; node<N_OF_TEMP; node++){
-        temp_c = bat_temp[node].temp_c;
+    for (cell = 0; cell < N_OF_TEMP; cell++){
+        temp_c = bat_temp[cell].temp_c;
         if (temp_c > (uint8_t)CRITICAL_TEMP_H){
             //if over temperature
-            bat_temp[node].bad_counter++;
-            bat_temp[node].bad_type = 1;
+            bat_temp[cell].bad_counter++;
+            bat_temp[cell].bad_type = 1;
         }else if (temp_c < (uint8_t)CRITICAL_TEMP_L){
             // if under temperature
-            bat_temp[node].bad_counter++;
-            bat_temp[node].bad_type = 0;
+            bat_temp[cell].bad_counter++;
+            bat_temp[cell].bad_type = 0;
         }else{
             //if there is no error
-            if (bat_temp[node].bad_counter>0){
-                bat_temp[node].bad_counter--;
+            if (bat_temp[cell].bad_counter > 0){
+                bat_temp[cell].bad_counter--;
             }           
         }
     }
 
-    // update node
-    for (node = 0; node< N_OF_NODE; node++){
-        for (temp = 0; temp<10; temp++){
-            if (bat_node[node].temps[temp]->bad_counter > ERROR_TEMPERATURE_LIMIT){
-                if (bat_node[node].temps[temp]->bad_type == 0){
-                    bat_node[node].under_temp |= (1u<<temp);
+    // Update subpacks
+    for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
+        for (temp = 0; temp < (N_OF_TEMP / N_OF_SUBPACK); temp++){
+            if (bat_subpack[subpack].temps[temp]->bad_counter > ERROR_TEMPERATURE_LIMIT){
+                if (bat_subpack[subpack].temps[temp]->bad_type == 0){
+                    bat_subpack[subpack].under_temp |= (1u<<temp);
                 }else{
-                    bat_node[node].over_temp |= (1u<<temp);
+                    bat_subpack[subpack].over_temp |= (1u<<temp);
                 }
             }
         }
     }
     
     // update temperature highest to each node
-    node = 0;
+    subpack = 0;
     uint8_t temp_temp=0;
     uint8_t i=0;
-    for (node=0;node<N_OF_NODE;node++){
-        temp_temp = bat_pack.nodes[node]->temps[0]->temp_c;
-        bat_pack.nodes[node]->high_temp = temp_temp;
-        for (i=1;i<10;i++){
-            if (temp_temp < bat_pack.nodes[node]->temps[i]->temp_c){
-                temp_temp = bat_pack.nodes[node]->temps[i]->temp_c;
-                bat_pack.nodes[node]->high_temp = temp_temp;
+    for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
+        temp_temp = bat_pack.subpacks[subpack]->temps[0]->temp_c;
+        bat_pack.subpacks[subpack]->high_temp = temp_temp;
+        for (i = 1; i < (N_OF_TEMP / N_OF_SUBPACK); i++){
+            if (temp_temp < bat_pack.subpacks[subpack]->temps[i]->temp_c){
+                temp_temp = bat_pack.subpacks[subpack]->temps[i]->temp_c;
+                bat_pack.subpacks[subpack]->high_temp = temp_temp;
             }
         }
     }
@@ -555,28 +562,28 @@ void check_temp(){
     // Update the battery_pack highest temperature
     bat_pack.HI_temp_c = bat_temp[0].temp_c;
     bat_pack.HI_temp_raw = bat_temp[0].temp_raw;
-    for (i=1;i<N_OF_TEMP;i++){
+    for (i = 1; i < N_OF_TEMP; i++){
         if (bat_temp[i].temp_c > bat_pack.HI_temp_c){
             bat_pack.HI_temp_c = bat_temp[i].temp_c;
             bat_pack.HI_temp_raw = bat_temp[i].temp_raw;
-            bat_pack.HI_temp_node = i/10;
+            bat_pack.HI_temp_node = i / (N_OF_TEMP / N_OF_SUBPACK);
         }    
     }
     
     
     // update pack of temp error
-    for (node = 0; node < N_OF_NODE; node++){
-        if (bat_pack.nodes[node]->over_temp != 0){
+    for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
+        if (bat_pack.subpacks[subpack]->over_temp != 0){
             bat_pack.status |= PACK_TEMP_OVER;
-            bat_err_add(PACK_TEMP_OVER, bat_node[node].over_temp, node);
+            bat_err_add(PACK_TEMP_OVER, bat_subpack[subpack].over_temp, subpack);
         }
 
-        if (bat_pack.nodes[node]->under_temp != 0){
+        if (bat_pack.subpacks[subpack]->under_temp != 0){
             bat_pack.status  |= PACK_TEMP_UNDER;
-            bat_err_add(PACK_TEMP_UNDER, bat_node[node].under_temp, node);
+            bat_err_add(PACK_TEMP_UNDER, bat_subpack[subpack].under_temp, subpack);
         }
     }
-    */
+    
 }
 
 

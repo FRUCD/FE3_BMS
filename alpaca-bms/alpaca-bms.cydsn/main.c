@@ -245,9 +245,9 @@ int main(void)
 			    OK_SIG_Write(1);
 			    check_cfg();  //CANNOT be finished, because 
 				
-		        get_cell_volt();// TODO Get voltage
+		        get_cell_volt();// TODO test voltage
 				//TESTDAY_2_TODO. check_stack_fuse(); // TODO: check if stacks are disconnected
-				//TESTDAY_1_TODO. get_cell_temp();// TODO Get temperature
+				get_cell_temp();// TODO test temperature
                 
 				/*
                 // TODO: Calculate SOC

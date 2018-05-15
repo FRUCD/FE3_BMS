@@ -25,8 +25,8 @@
     
     #define CELL_ENABLE_HIGH (0x7DF)
     #define CELL_ENABLE_LOW (0x3DF)
-    #define OVER_VOLTAGE (4500u)
-    #define UNDER_VOLTAGE (2800u)
+    #define OVER_VOLTAGE (4200u) // Updated for FE5 (4.2V)
+    #define UNDER_VOLTAGE (2500u) // Updated for FE5 (2.5V)
     #define STACK_VOLT_DIFF_LIMIT (9000u)   //9 volt
     #define CRITICAL_TEMP_L (0u)          // 0 C
     #define CRITICAL_TEMP_H (60u)             //60 C
@@ -121,10 +121,10 @@ typedef struct
   volatile BAT_TEMP_t *temps[N_OF_TEMP / N_OF_SUBPACK]; // 14 Thermistors per subpack (measuring cells)
   volatile BAT_TEMP_t *board_temps[N_OF_TEMP_BOARD / N_OF_SUBPACK];
   volatile uint8 high_temp;
-  volatile uint16_t over_temp;
-  volatile uint16_t under_temp;
-  volatile uint16_t over_voltage;
-  volatile uint16_t under_voltage;
+  volatile uint32_t over_temp;
+  volatile uint32_t under_temp;
+  volatile uint32_t over_voltage;
+  volatile uint32_t under_voltage;
   volatile uint32_t voltage;
   volatile uint8_t bad_counter;
 }BAT_SUBPACK_t;
