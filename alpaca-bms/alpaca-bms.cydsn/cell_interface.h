@@ -108,7 +108,7 @@ typedef struct
 typedef struct
 {
   volatile uint16_t temp_raw;
-  volatile uint8_t temp_c;
+  volatile double temp_c;
   volatile uint8_t bad_counter;
   volatile uint8_t type;
   volatile uint8_t bad_type;
@@ -312,7 +312,7 @@ uint8_t bat_health_check();
 void _SOC_log();
 void bat_balance();
 void DEBUG_balancing_on();
-uint8_t mvToC(uint8_t mv);
+double mvToC(uint16_t mv);
 uint8_t open_wire_adow(uint8_t pup);
 
 uint8_t SKY_get_cell_volt();

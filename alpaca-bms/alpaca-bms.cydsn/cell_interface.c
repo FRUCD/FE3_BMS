@@ -535,15 +535,11 @@ void check_volt(){
 
                 
 // Convert mv to degrees C
-uint8_t mvToC(uint8_t mv) {
-    float B = 3428;
-    float Ti = 298.15;
-    
-    float numerator = Ti * B;
-    float denominator = (Ti * log(mv / (5000 - mv))) + B;
-    float out = (numerator / denominator) - 273.15;
-    
-    return (uint8_t)out;
+double mvToC(uint16_t mv) {
+    double v = (double)mv / 1000;
+    double RT = (v*10000/(5.0-v));
+    double T = (1/((1/298.15)+((double)1/3428)*log(RT/10000)))-273.15;
+    return T;
 }
 void update_temp(volatile uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2]) {
     uint8_t rawIndex = 0;
