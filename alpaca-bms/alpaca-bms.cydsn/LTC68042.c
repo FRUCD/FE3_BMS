@@ -84,7 +84,7 @@ uint8_t ADAX[2]; //!< GPIO conversion command.
 */
 void LTC6804_initialize()
 {
-  set_adc(MD_NORMAL,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL);
+  set_adc(MD_FILTERED,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL); // MD_FILTERED from MD_NORMAL
   LTC6804_init_cfg();
 }
 
@@ -157,6 +157,53 @@ void LTC6804_adcv()
   spi_write_array(4,cmd);
 
 }
+
+void LTC6804_adow(uint8_t pup)
+{
+
+  uint8_t cmd[4];
+  uint16_t temp_pec;
+  
+  //1
+  cmd[0] = ADCV[0];
+  cmd[1] = (((ADCV[1] & 0xBF) | (pup << 6)) | (0x1 << 3)); 
+  
+  //2
+  temp_pec = pec15_calc(2, ADCV);
+  cmd[2] = (uint8_t)(temp_pec >> 8);
+  cmd[3] = (uint8_t)(temp_pec);
+  
+  //3
+  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  
+  //4
+  spi_write_array(4,cmd);
+
+}
+
+/*
+void LTC6804_cvst()
+{
+  uint8_t cmd[4];
+  uint16_t temp_pec;
+  
+  //1
+  cmd[0] = ADCV[0];
+  cmd[1] = ADCV[1];
+  cmd[1] = cmd[1] & 
+  
+  //2
+  temp_pec = pec15_calc(2, ADCV);
+  cmd[2] = (uint8_t)(temp_pec >> 8);
+  cmd[3] = (uint8_t)(temp_pec);
+  
+  //3
+  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  
+  //4
+  spi_write_array(4,cmd);
+}
+*/
 /*
   LTC6804_adcv Function sequence:
   
@@ -308,7 +355,6 @@ uint8_t LTC6804_rdcv(uint8_t reg,
 		}
 	}
   }
-
  //2
 return(pec_error);
 }

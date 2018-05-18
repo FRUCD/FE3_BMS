@@ -174,9 +174,7 @@ void process_failure(){
 }
 
 void debugMain() {
-    //wakeup_sleep();
-    SS_SetDriveMode(SS_DM_RES_UP);
-    LTC68_Start();
+    //while(1) { wakeup_sleep(); };
     uint8_t txData[2] = {0x1E, 0xEE};
     uint8_t rxData[23];
     while(1) {
@@ -185,7 +183,10 @@ void debugMain() {
         
         //get_cell_volt();
         //wakeup_sleep();
+        CyDelay(500);
         //my_spi_write_read(txData, 2, rxData, 23);
+        //open_wire_adow(0x1);
+        //open_wire_adow(0x0);
         get_cell_volt();
         get_cell_temp();
     }
@@ -217,14 +218,16 @@ int main(void)
 			        CyWdtStart(CYWDT_1024_TICKS,CYWDT_LPMODE_NOCHANGE);
                 #endif
                 
-                /* HOLY SHIT TURN THIS ON
+                
 				// Initialize
-                SOC_Store_Start();
-                SOC_Timer_Start();
+                //SOC_Store_Start();
+                //SOC_Timer_Start();
 				bms_init();
 				mypack_init();
-				current_init();
-                */
+				
+                //current_init();
+                
+                
                 
 			    //monitor_init();
 			    

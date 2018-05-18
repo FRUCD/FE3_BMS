@@ -12,6 +12,7 @@
 #include "cell_interface.h"
 #include "current_sense.h"
 #include "LTC68042.h"
+#include "Select6820.h"
 #include "math.h"
 
 #include <stdlib.h>
@@ -45,6 +46,9 @@ void  bms_init(){
     SS_SetDriveMode(SS_DM_RES_UP);
     LTC68_Start();
     LTC6804_initialize();
+    Select6820_Write(0); // Configure each bus
+    LTC6804_wrcfg(IC_PER_BUS, tx_cfg);
+    Select6820_Write(1);
     LTC6804_wrcfg(IC_PER_BUS, tx_cfg);
 }
 
@@ -108,6 +112,7 @@ void mypack_init(){
         bat_pack.subpacks[subpack] = &(bat_subpack[subpack]);
     }
     
+    /*
     // get SOC
     uint32_t temp_SOC = SOC_Store_ReadByte(0x00)<<24;
     temp_SOC |= SOC_Store_ReadByte(0x01)<<16;
@@ -118,6 +123,7 @@ void mypack_init(){
         temp_SOC = SOC_NOMIAL;
     }
     bat_pack.current_charge = temp_SOC;
+    */
     
     //give the pack non-0 value help debuging CAN
     bat_pack.voltage = 12;
@@ -175,16 +181,103 @@ uint8_t get_cell_volt(){
     LTC68_ClearFIFO();
     int error1 = 0;
     int error2 = 0;
+    
+    Select6820_Write(0);
+    wakeup_sleep();
+    CyDelay(100); // Waited more
+    for (int i = 0; i < 100; i++) {
+    LTC6804_adcv();
+    LTC6804_adcv();
+    }
+    CyDelay(100); // Give it time before switching
+    
+    Select6820_Write(1);
     wakeup_sleep();
     LTC6804_adcv();
+    
     CyDelay(10);
-    wakeup_sleep();
+    
     Select6820_Write(0); // Select a bus
+    wakeup_sleep();
+    CyDelay(100);
+    //uint16_t *test = (uint16_t*)(&cell_codes[IC_PER_BUS]); // SHOULD PROBABLY REPLACE WITH SOMETHING LIKE 
+                                                             // instead of copying values from two arrays
+    
+    error1 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_lower); // Set to read back all cell voltage registers
+    error1 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_lower); // Set to read back all cell voltage registers
+    
+    CyDelay(10); // Give it a moment before switching.
+    Select6820_Write(1); // Select a bus
+    wakeup_sleep();
+    error2 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_higher);
+    
+    if (error1 == -1 || error2 == -1)
+    {
+        #ifdef DEBUG_LCD
+            LCD_Position(0u,10u);
+            LCD_PrintString("ERROR");
+        #endif
+       return 1;
+    }
+    
+    for (unsigned int i = 0; i < IC_PER_BUS; i++) {
+        for (int j = 0; j < 12; j++) {
+            cell_codes[i][j] = cell_codes_lower[i][j];
+        } 
+    }
+    
+    for (unsigned int i = 0; i < IC_PER_BUS; i++) {
+        for (int j = 0; j < 12; j++) {
+            cell_codes[i + IC_PER_BUS][j] = cell_codes_higher[i][j];
+        } 
+    }
+    
+    //get information
+    update_volt(cell_codes);
+    
+    //check error
+    check_volt();
+
+    
+    if (error1 == -1 || error2 == -2) {
+        return -1;   
+    } else {
+        return 0;   
+    }
+}// get_cell_volt()
+
+uint8_t open_wire_adow(uint8_t pup){
+    LTC68_ClearFIFO();
+    int error1 = 0;
+    int error2 = 0;
+    
+    Select6820_Write(0);
+    wakeup_sleep();
+    CyDelay(100); // Waited more
+    for (int i = 0; i < 3; i++) {
+        LTC6804_adow(pup);
+    }
+    CyDelay(100); // Give it time before switching
+    
+    Select6820_Write(1);
+    wakeup_sleep();
+    LTC6804_adow(pup);
+    
+    CyDelay(10);
+    
+    Select6820_Write(0); // Select a bus
+    wakeup_sleep();
+    CyDelay(1);
     //uint16_t *test = (uint16_t*)(&cell_codes[IC_PER_BUS]); // SHOULD PROBABLY REPLACE WITH SOMETHING LIKE 
                                                              // instead of copying values from two arrays
     error1 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_lower); // Set to read back all cell voltage registers
+    error1 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_lower); // Set to read back all cell voltage registers
+    
+    CyDelay(10); // Give it a moment before switching.
     Select6820_Write(1); // Select a bus
+    wakeup_sleep();
     error2 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_higher);
+    
     if (error1 == -1 || error2 == -1)
     {
         #ifdef DEBUG_LCD
@@ -279,8 +372,8 @@ uint8_t get_cell_temp(){
         LCD_Position(0u,10u);
         LCD_PrintString("OK");
     #endif
-    return 0;
     */
+    return 0;
 }// get_cell_temp()
 
 

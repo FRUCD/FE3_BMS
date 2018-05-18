@@ -313,6 +313,7 @@ void _SOC_log();
 void bat_balance();
 void DEBUG_balancing_on();
 uint8_t mvToC(uint8_t mv);
+uint8_t open_wire_adow(uint8_t pup);
 
 uint8_t SKY_get_cell_volt();
 
