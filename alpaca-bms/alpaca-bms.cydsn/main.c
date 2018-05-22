@@ -184,9 +184,11 @@ void debugMain() {
         //get_cell_volt();
         //wakeup_sleep();
         CyDelay(500);
+        //Select6820_Write(0);
         //my_spi_write_read(txData, 2, rxData, 23);
         //open_wire_adow(0x1);
         //open_wire_adow(0x0);
+        
         get_cell_volt();
         get_cell_temp();
     }

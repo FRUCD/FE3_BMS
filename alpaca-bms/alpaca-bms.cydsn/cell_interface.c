@@ -186,14 +186,17 @@ uint8_t get_cell_volt(){
     wakeup_sleep();
     CyDelay(100); // Waited more
     for (int i = 0; i < 100; i++) {
-    LTC6804_adcv();
-    LTC6804_adcv();
+        LTC6804_adcv();
+        LTC6804_adcv();
     }
     CyDelay(100); // Give it time before switching
     
     Select6820_Write(1);
     wakeup_sleep();
-    LTC6804_adcv();
+    for (int i = 0; i < 100; i++) {
+        LTC6804_adcv();
+        LTC6804_adcv();
+    }
     
     CyDelay(10);
     
@@ -209,6 +212,8 @@ uint8_t get_cell_volt(){
     CyDelay(10); // Give it a moment before switching.
     Select6820_Write(1); // Select a bus
     wakeup_sleep();
+    CyDelay(100);
+    error2 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_higher);
     error2 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_higher);
     
     if (error1 == -1 || error2 == -1)
@@ -330,7 +335,7 @@ uint8_t get_cell_temp(){
     }
     
     update_temp(rawTemp);
-    
+    check_temp();
     /*
     int error;
     wakeup_sleep();
@@ -542,19 +547,19 @@ double mvToC(uint16_t mv) {
     return T;
 }
 void update_temp(volatile uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2]) {
-    uint8_t rawIndex = 0;
-    uint8_t batIndex = 0;
-    uint8_t boardIndex = 0;
+    uint16_t rawIndex = 0;
+    uint16_t batIndex = 0;
+    uint16_t boardIndex = 0;
     uint32_t temp = 0;
     
-    for (uint8_t board = 0; board < 6; board++) {
+    for (uint16_t board = 0; board < 6; board++) {
         for (uint8_t cellTemp = 0; cellTemp < 14; cellTemp++) {
             bat_temp[batIndex].temp_raw = rawTemp[rawIndex++] << 8; // Upper bits
             bat_temp[batIndex].temp_raw |= rawTemp[rawIndex++];
             bat_temp[batIndex].temp_c = mvToC(bat_temp[batIndex].temp_raw);
             batIndex++;
         }
-        for (uint8_t boardTemp = 0; boardTemp < 9; boardTemp++) {
+        for (uint16_t boardTemp = 0; boardTemp < 9; boardTemp++) {
             
             board_temp[boardIndex].temp_raw = rawTemp[rawIndex++] << 8; // Upper bits
             board_temp[boardIndex].temp_raw |= rawTemp[rawIndex++];
