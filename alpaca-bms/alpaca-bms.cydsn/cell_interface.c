@@ -184,35 +184,35 @@ uint8_t get_cell_volt(){
     
     Select6820_Write(0);
     wakeup_sleep();
-    CyDelay(100); // Waited more
-    for (int i = 0; i < 100; i++) {
+    //CyDelay(1); // Waited more
+    //for (int i = 0; i < 100; i++) {
         LTC6804_adcv();
         LTC6804_adcv();
-    }
-    CyDelay(100); // Give it time before switching
+    //}
+    CyDelay(1); // Give it time before switching
     
     Select6820_Write(1);
     wakeup_sleep();
-    for (int i = 0; i < 100; i++) {
+    //for (int i = 0; i < 100; i++) {
         LTC6804_adcv();
         LTC6804_adcv();
-    }
+    //}
     
-    CyDelay(10);
+    CyDelay(1);
     
     Select6820_Write(0); // Select a bus
     wakeup_sleep();
-    CyDelay(100);
+    CyDelay(10);
     //uint16_t *test = (uint16_t*)(&cell_codes[IC_PER_BUS]); // SHOULD PROBABLY REPLACE WITH SOMETHING LIKE 
                                                              // instead of copying values from two arrays
     
     error1 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_lower); // Set to read back all cell voltage registers
     error1 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_lower); // Set to read back all cell voltage registers
     
-    CyDelay(10); // Give it a moment before switching.
+    CyDelay(1); // Give it a moment before switching.
     Select6820_Write(1); // Select a bus
     wakeup_sleep();
-    CyDelay(100);
+    CyDelay(10);
     error2 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_higher);
     error2 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_higher);
     

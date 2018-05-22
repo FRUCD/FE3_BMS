@@ -1013,7 +1013,7 @@ void my_spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI po
   {
 
    LTC68_WriteTxData(tx_Data[i]);
-    CyDelay(100);
+    CyDelay(1);
     }
    
 
@@ -1047,6 +1047,7 @@ void my_spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI po
 
 
 CyDelayUs(200);
+CyDelay(10);
 }
 
 

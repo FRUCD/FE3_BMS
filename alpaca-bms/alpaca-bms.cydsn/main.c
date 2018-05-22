@@ -177,6 +177,7 @@ void debugMain() {
     //while(1) { wakeup_sleep(); };
     uint8_t txData[2] = {0x1E, 0xEE};
     uint8_t rxData[23];
+    int t = 0;
     while(1) {
 
         // For debugging stay in here.
@@ -191,6 +192,7 @@ void debugMain() {
         
         get_cell_volt();
         get_cell_temp();
+        t++;
     }
     while(1) {
         // DO nothing
