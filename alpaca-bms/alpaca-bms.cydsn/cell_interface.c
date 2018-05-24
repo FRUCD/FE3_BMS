@@ -184,7 +184,7 @@ uint8_t get_cell_volt(){
     
     Select6820_Write(0);
     wakeup_sleep();
-    //CyDelay(1); // Waited more
+    CyDelay(1); // Waited more
     //for (int i = 0; i < 100; i++) {
         LTC6804_adcv();
         LTC6804_adcv();
@@ -198,7 +198,7 @@ uint8_t get_cell_volt(){
         LTC6804_adcv();
     //}
     
-    CyDelay(1);
+    CyDelay(10);
     
     Select6820_Write(0); // Select a bus
     wakeup_sleep();
@@ -565,10 +565,20 @@ void update_temp(volatile uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2]) {
             board_temp[boardIndex].temp_raw |= rawTemp[rawIndex++];
             board_temp[boardIndex].temp_c = mvToC(board_temp[boardIndex].temp_raw);
             boardIndex++;
-            
-            //rawIndex += 2; // TODO: Store board temps properly
         }
     }
+    
+    bat_subpack[1].temps[3]->temp_raw = bat_subpack[1].temps[2]->temp_raw;
+    bat_subpack[1].temps[3]->temp_c = bat_subpack[1].temps[2]->temp_c;
+    
+    bat_subpack[1].temps[4]->temp_raw = bat_subpack[1].temps[5]->temp_raw;
+    bat_subpack[1].temps[4]->temp_c = bat_subpack[1].temps[5]->temp_c;
+
+    bat_subpack[1].temps[11]->temp_raw = bat_subpack[1].temps[12]->temp_raw;
+    bat_subpack[1].temps[11]->temp_c = bat_subpack[1].temps[12]->temp_c;
+    
+    bat_subpack[4].temps[8]->temp_raw = bat_subpack[4].temps[10]->temp_raw;
+    bat_subpack[4].temps[8]->temp_c = bat_subpack[4].temps[10]->temp_c;
 }
 
 
@@ -579,32 +589,6 @@ void check_temp(){
     uint8_t subpack=0;
     uint8_t cell=0;
     uint16_t temp_c=0;
-    
-    
-    /*
-    // 2/4/2016 Measurement on actual battery pack
-    // 0,7,20,21,27,30,33 are dead
-    bat_temp[0].temp_raw = bat_temp[1].temp_raw;
-    bat_temp[0].temp_c = bat_temp[1].temp_c;
-    
-    bat_temp[7].temp_raw = bat_temp[6].temp_raw;
-    bat_temp[7].temp_c = bat_temp[6].temp_c;
-    
-    bat_temp[20].temp_raw = bat_temp[22].temp_raw;
-    bat_temp[20].temp_c = bat_temp[22].temp_c;
-    
-    bat_temp[21].temp_raw = bat_temp[22].temp_raw;
-    bat_temp[21].temp_c = bat_temp[22].temp_c;
-    
-    bat_temp[27].temp_raw = bat_temp[28].temp_raw;
-    bat_temp[27].temp_c = bat_temp[28].temp_c;
-
-    bat_temp[30].temp_raw = bat_temp[31].temp_raw;
-    bat_temp[30].temp_c = bat_temp[31].temp_c;
-    
-    bat_temp[33].temp_raw = bat_temp[34].temp_raw;
-    bat_temp[33].temp_c = bat_temp[34].temp_c;
-    */
     
     // check temp
     for (cell = 0; cell < N_OF_TEMP; cell++){

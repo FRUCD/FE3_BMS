@@ -11,7 +11,7 @@
 
 //#define WDT_ENABLE
 
-#define DEBUG_MODE
+//#define DEBUG_MODE
 
 typedef enum 
 {
@@ -66,20 +66,20 @@ void process_event(){
     CyDelay(10);
 
     // send temperature
-    /*
+    
     // TEST_DAY_1
-    can_send_temp(bat_pack.nodes[0]->high_temp,
-				bat_pack.nodes[1]->high_temp,
-                bat_pack.nodes[2]->high_temp,
-                bat_pack.nodes[3]->high_temp,
-                bat_pack.nodes[4]->high_temp,
-                bat_pack.nodes[5]->high_temp,
+    can_send_temp(bat_pack.subpacks[0]->high_temp,
+				bat_pack.subpacks[1]->high_temp,
+                bat_pack.subpacks[2]->high_temp,
+                bat_pack.subpacks[3]->high_temp,
+                bat_pack.subpacks[4]->high_temp,
+                bat_pack.subpacks[5]->high_temp,
 				bat_pack.HI_temp_node,
 				bat_pack.HI_temp_c);
-    */
+    
     // send current
-    CyDelay(10);
-    can_send_current(bat_pack.current);
+    //CyDelay(10);
+    //can_send_current(bat_pack.current);
     CyDelay(10);
     
     CyGlobalIntEnable;
@@ -202,13 +202,17 @@ void debugMain() {
 
 int main(void)
 {
+    
     // Stablize the BMS OK signal when system is still setting up
     OK_SIG_Write(1);
+    
+    
     
 	// Initialize state machine
 	BMS_MODE bms_status = BMS_BOOTUP;
 	uint32_t system_interval = 0;
     uint8_t led = 0;
+   
     
 	while(1){
 		switch (bms_status){

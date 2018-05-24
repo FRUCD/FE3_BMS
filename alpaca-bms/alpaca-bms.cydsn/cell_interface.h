@@ -18,8 +18,8 @@
     #include <project.h>
     #include "can_manager.h"
    
-    #define ERROR_VOLTAGE_LIMIT (10u)
-    #define ERROR_TEMPERATURE_LIMIT (10u)
+    #define ERROR_VOLTAGE_LIMIT (2u)
+    #define ERROR_TEMPERATURE_LIMIT (2u)
     #define FUSE_BAD_LIMIT (10u)
     #define BAD_FILTER_LIMIT (10u)
     

@@ -449,7 +449,9 @@
       <Data key="149df5a4-50df-403e-9554-ea4a9edf5aec" value="red_led_1" />
       <Data key="1425177d-0d0e-4468-8bcc-e638e5509a9b" value="Rx_1" />
       <Data key="77715107-f8d5-47e5-a629-0fb83101ac6b" value="current" />
+      <Data key="86992504-b2ea-485d-863e-96a572053ccb" value="Tx_2" />
       <Data key="a301d08f-3603-41dd-9ff4-4e6e8fd30a47" value="SS_1" />
+      <Data key="b3fba535-769b-456f-bc9f-5a62d71be007" value="Tx_2" />
       <Data key="c4e5a892-cf04-4d74-ae9d-14ebf11c2aff" value="JAM_pin" />
       <Data key="c786d859-7a00-4d8b-8f36-734aaaca7c40/ed092b9b-d398-4703-be89-cebf998501f6" value="LCD_LCDPort" />
       <Data key="cc3bcd7e-5dc0-48ea-9bf6-6aa082be1ada" value="Vout_1" />
@@ -3546,7 +3548,7 @@
   <Group key="Pin2">
     <Group key="2f0177a8-63df-489b-a239-25ea82dc5146">
       <Group key="0">
-        <Data key="Port Format" value="12,0" />
+        <Data key="Port Format" value="3,6" />
       </Group>
     </Group>
     <Group key="3ddb304e-c5bf-4d0b-aeae-96b9a9aa8b8d">
@@ -3576,7 +3578,12 @@
     </Group>
     <Group key="1425177d-0d0e-4468-8bcc-e638e5509a9b">
       <Group key="0">
-        <Data key="Port Format" value="12,3" />
+        <Data key="Port Format" value="12,2" />
+      </Group>
+    </Group>
+    <Group key="86992504-b2ea-485d-863e-96a572053ccb">
+      <Group key="0">
+        <Data key="Port Format" value="12,2" />
       </Group>
     </Group>
     <Group key="a301d08f-3603-41dd-9ff4-4e6e8fd30a47">
@@ -3629,7 +3636,7 @@
     </Group>
     <Group key="ed092b9b-d398-4703-be89-cebf998501f6">
       <Group key="0">
-        <Data key="Port Format" value="12,2" />
+        <Data key="Port Format" value="12,3" />
       </Group>
     </Group>
     <Group key="UnAssigned Pins">
@@ -3641,6 +3648,9 @@
       </Group>
       <Group key="42e1204f-2d04-4f03-b53f-fe7d0a6cd53c">
         <Data key="0" value="131702988437894478" />
+      </Group>
+      <Group key="b3fba535-769b-456f-bc9f-5a62d71be007">
+        <Data key="0" value="131716321574562706" />
       </Group>
       <Group key="e06615dd-5960-4237-b283-420c9d61df68">
         <Data key="0" value="130786712369021662" />
