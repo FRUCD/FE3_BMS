@@ -252,36 +252,39 @@ int main(void)
 				break;
 
 			case BMS_NORMAL:
-                
+                // while loop with get volt get temp and bat_balance no delays
+                // DCP Enable in 68042.c!!!
 			    OK_SIG_Write(1);
 			    check_cfg();  //CANNOT be finished, because 
 				
+                
 		        get_cell_volt();// TODO test voltage
 				//TESTDAY_2_TODO. check_stack_fuse(); // TODO: check if stacks are disconnected
 				get_cell_temp();// TODO test temperature
                 
-				/*
+				
                 // TODO: Calculate SOC
-                get_current(); // TODO get current reading from sensor
-			    bat_soc = get_soc(); // TODO calculate SOC()
+                //get_current(); // TODO get current reading from sensor
+			    //bat_soc = get_soc(); // TODO calculate SOC()
 				// because it is normal mode, just set a median length current reading interval
-			    */
+			    
                 //SKY_TODO update_soc();
 
-                /*
+                
                 //Uncomment all of this to blance
-                CyDelay(5000); // 1500 works for test bench
+                //CyDelay(5000); 
                 
-                bat_balance();
-                bat_balance();
+                //bat_balance();
+                //bat_balance();
                 
-                CyDelay(5000);
-                */
+                //CyDelay(5000);
+                
                 
                 bat_health_check();
                 if (bat_pack.health == FAULT){
 					bms_status = BMS_FAULT;
 				}
+                
                 
                 set_current_interval(100);
 				system_interval = 500;

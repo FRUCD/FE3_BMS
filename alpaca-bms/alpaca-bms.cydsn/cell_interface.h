@@ -30,6 +30,8 @@
     #define STACK_VOLT_DIFF_LIMIT (9000u)   //9 volt
     #define CRITICAL_TEMP_L (0u)          // 0 C
     #define CRITICAL_TEMP_H (60u)             //60 C
+    #define CRITICAL_TEMP_BOARD_L (0u)          // 0 C
+    #define CRITICAL_TEMP_BOARD_H (60u)  
     #define BAD_THERM_LIMIT (15u)
     #define SOC_NOMIAL      (50000*3600u)    //nomial SOC before calibration
     #define SOC_CALI_HIGH (106000u)     //High cali point at 106V
@@ -124,6 +126,8 @@ typedef struct
   volatile uint32_t over_temp;
   volatile uint32_t under_temp;
   volatile uint32_t over_voltage;
+  volatile uint32_t under_temp_board;
+  volatile uint32_t over_temp_board;
   volatile uint32_t under_voltage;
   volatile uint32_t voltage;
   volatile uint8_t bad_counter;
@@ -141,6 +145,8 @@ typedef struct
   volatile uint8_t SOC_percent;
   volatile uint8_t SOC_cali_flag;
   volatile uint8_t HI_temp_c;
+  volatile uint8_t HI_temp_board_c;
+  volatile uint8_t HI_temp_board_node;
   volatile uint8_t HI_temp_node;
   volatile uint8_t HI_temp_raw;
   volatile uint16_t HI_voltage;

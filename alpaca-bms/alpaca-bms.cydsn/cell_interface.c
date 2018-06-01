@@ -471,7 +471,7 @@ void update_volt(volatile uint16_t cell_codes[IC_PER_BUS * N_OF_BUSSES][12]){
         bat_subpack[subpack].voltage = temp_volt;
         temp_pack_volt += temp_volt;
     }
-    bat_pack.voltage = temp_volt / N_OF_SUBPACK;   
+    bat_pack.voltage = temp_pack_volt / N_OF_SUBPACK;   
 }
 
 void check_volt(){
@@ -568,6 +568,7 @@ void update_temp(volatile uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2]) {
         }
     }
     
+    // Deal with bad thermistors by setting them to nearby thermistors
     bat_subpack[1].temps[3]->temp_raw = bat_subpack[1].temps[2]->temp_raw;
     bat_subpack[1].temps[3]->temp_c = bat_subpack[1].temps[2]->temp_c;
     
@@ -579,6 +580,16 @@ void update_temp(volatile uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2]) {
     
     bat_subpack[4].temps[8]->temp_raw = bat_subpack[4].temps[10]->temp_raw;
     bat_subpack[4].temps[8]->temp_c = bat_subpack[4].temps[10]->temp_c;
+    
+    bat_subpack[1].board_temps[6]->temp_raw = bat_subpack[1].board_temps[7]->temp_raw;
+    bat_subpack[1].board_temps[6]->temp_c = bat_subpack[1].board_temps[7]->temp_c;
+
+    bat_subpack[3].board_temps[2]->temp_raw = bat_subpack[3].board_temps[1]->temp_raw;
+    bat_subpack[3].board_temps[2]->temp_c = bat_subpack[3].board_temps[1]->temp_c;
+
+    bat_subpack[5].board_temps[7]->temp_raw = bat_subpack[5].board_temps[6]->temp_raw;
+    bat_subpack[5].board_temps[7]->temp_c = bat_subpack[5].board_temps[6]->temp_c;
+    
 }
 
 
@@ -608,6 +619,25 @@ void check_temp(){
             }           
         }
     }
+    
+    // check board temps
+    for (cell = 0; cell < N_OF_TEMP_BOARD; cell++){
+        temp_c = board_temp[cell].temp_c;
+        if (temp_c > (uint8_t)CRITICAL_TEMP_BOARD_H){
+            //if over temperature
+            board_temp[cell].bad_counter++;
+            board_temp[cell].bad_type = 1;
+        }else if (temp_c < (uint8_t)CRITICAL_TEMP_BOARD_L){
+            // if under temperature
+            board_temp[cell].bad_counter++;
+            board_temp[cell].bad_type = 0;
+        }else{
+            //if there is no error
+            if (board_temp[cell].bad_counter > 0){
+                board_temp[cell].bad_counter--;
+            }           
+        }
+    }
 
     // Update subpacks
     for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
@@ -617,6 +647,15 @@ void check_temp(){
                     bat_subpack[subpack].under_temp |= (1u<<temp);
                 }else{
                     bat_subpack[subpack].over_temp |= (1u<<temp);
+                }
+            }
+        }
+        for (temp = 0; temp < (N_OF_TEMP_BOARD / N_OF_SUBPACK); temp++){
+            if (bat_subpack[subpack].board_temps[temp]->bad_counter > ERROR_TEMPERATURE_LIMIT){
+                if (bat_subpack[subpack].board_temps[temp]->bad_type == 0){
+                    bat_subpack[subpack].under_temp_board |= (1u<<temp);
+                }else{
+                    bat_subpack[subpack].over_temp_board |= (1u<<temp);
                 }
             }
         }
@@ -648,6 +687,14 @@ void check_temp(){
         }    
     }
     
+    // Update the battery_pack highest temperature
+    bat_pack.HI_temp_board_c = board_temp[0].temp_c;
+    for (i = 1; i < N_OF_TEMP_BOARD; i++){
+        if (board_temp[i].temp_c > bat_pack.HI_temp_board_c){
+            bat_pack.HI_temp_board_c = board_temp[i].temp_c;
+            bat_pack.HI_temp_board_node = i / (N_OF_TEMP_BOARD / N_OF_SUBPACK);
+        }    
+    }
     
     // update pack of temp error
     for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
@@ -657,6 +704,16 @@ void check_temp(){
         }
 
         if (bat_pack.subpacks[subpack]->under_temp != 0){
+            bat_pack.status  |= PACK_TEMP_UNDER;
+            bat_err_add(PACK_TEMP_UNDER, bat_subpack[subpack].under_temp, subpack);
+        }
+        
+        if (bat_pack.subpacks[subpack]->over_temp_board != 0){
+            bat_pack.status |= PACK_TEMP_OVER;
+            bat_err_add(PACK_TEMP_OVER, bat_subpack[subpack].over_temp, subpack);
+        }
+
+        if (bat_pack.subpacks[subpack]->under_temp_board != 0){
             bat_pack.status  |= PACK_TEMP_UNDER;
             bat_err_add(PACK_TEMP_UNDER, bat_subpack[subpack].under_temp, subpack);
         }
@@ -948,42 +1005,60 @@ void _SOC_log(){
 
 void bat_balance(){
     
-    /*
     uint8_t ic=0;
     uint8_t cell=0;
     uint8_t i=0;
-    uint8_t temp_cfg[TOTAL_IC][6];
+    uint8_t temp_cfg[IC_PER_BUS][6];
     uint16_t low_voltage = bat_pack.LO_voltage <= UNDER_VOLTAGE ? UNDER_VOLTAGE :bat_pack.LO_voltage;
-    
-    for (ic=0;ic<TOTAL_IC;ic++){
-        for (i=0;i<6;i++){
+ 
+    for (ic = 0; ic < IC_PER_BUS; ic++){
+        for (i = 0; i < 6; i++){
             temp_cfg[ic][i] = tx_cfg[ic][i];
         }
     }
     
-    for (ic=0;ic<TOTAL_IC;ic++){
-        for (cell=0;cell<12;cell++){
+    
+    for (ic = 0; ic < (IC_PER_BUS * N_OF_BUSSES); ic++){
+        
+        for (cell = 0; cell < 12; cell++){
             uint16_t diff = 0;
-            if (cell_codes[ic][cell]/10 > low_voltage)
+            if (cell_codes[ic][cell] / 10 > low_voltage)
                 diff = cell_codes[ic][cell]/10 - low_voltage;
-                
-            //if ((CELL_ENABLE & (0x1<<cell)) && ((cell_codes[ic][cell]/10)-low_voltage > BALANCE_THRESHOLD)){
-            if ( diff > 0 && diff > BALANCE_THRESHOLD ){    
-                // if this cell is 30mV or more higher than the lowest cell
-                if (cell<8){
-                    temp_cfg[ic][4] |= (0x1<<cell);
+            
+            if (ic == 2 || ic == 5 || ic == 8 || ic == 11 || ic == 14 || ic == 17) { // These ICs have different cells used
+                if (!(CELL_ENABLE_HIGH & (0x1 << cell))){ // If not enabled
+                    diff = 0;
+                }    
+            } else { // If not enabled
+                if (!(CELL_ENABLE_LOW & (0x1 << cell))){
+                    diff = 0;
+                } 
+            }
+            
+            if (diff > 0 && diff > BALANCE_THRESHOLD){    
+                // if this cell is 15mV or more higher than the lowest cell
+                if (cell < 8){
+                    temp_cfg[ic % IC_PER_BUS][4] |= (0x1 << cell);
                 }else{
-                    temp_cfg[ic][5] |= (0x1<<(cell-8));
+                    temp_cfg[ic % IC_PER_BUS][5] |= (0x1 << (cell - 8));
                 }
             }
+            
         }
+        
     }
     
     // discharge time has been set in void LTC6804_init_cfg() already. 0x2 = 1 min
     
-    LTC6804_wrcfg(TOTAL_IC, temp_cfg);
+    Select6820_Write(0);
+    LTC6804_wrcfg(IC_PER_BUS, temp_cfg);
+    LTC6804_wrcfg(IC_PER_BUS, temp_cfg);
     
-    */
+    CyDelay(1);
+    Select6820_Write(1);
+    LTC6804_wrcfg(IC_PER_BUS, temp_cfg);
+    LTC6804_wrcfg(IC_PER_BUS, temp_cfg);
+    
 }
 
 

@@ -1061,7 +1061,7 @@ void LTC6804_init_cfg()
     tx_cfg[i][2] = 0x00;
     tx_cfg[i][3] = 0x00; 
     tx_cfg[i][4] = 0x00;
-    tx_cfg[i][5] = 0x20; // DCTO=0x2 1 min
+    tx_cfg[i][5] = 0x20; // DCTO=0x2 1 min // was 0x20
   }
  
 }
