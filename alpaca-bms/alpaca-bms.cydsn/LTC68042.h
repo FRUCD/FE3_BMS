@@ -185,7 +185,7 @@ static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 
 
 
 // User defined
-uint8_t tx_cfg[1][6];
+uint8_t tx_cfg[9][6];
 void LTC6804_init_cfg();
 
 // Between these comments

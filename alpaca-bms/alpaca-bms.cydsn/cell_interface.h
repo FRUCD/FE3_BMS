@@ -18,8 +18,8 @@
     #include <project.h>
     #include "can_manager.h"
    
-    #define ERROR_VOLTAGE_LIMIT (2u)
-    #define ERROR_TEMPERATURE_LIMIT (2u)
+    #define ERROR_VOLTAGE_LIMIT (4u)
+    #define ERROR_TEMPERATURE_LIMIT (4u)
     #define FUSE_BAD_LIMIT (10u)
     #define BAD_FILTER_LIMIT (10u)
     
@@ -40,7 +40,7 @@
     #define SOC_SOC_LOW   (10000*3600u)      //manually set it in mAh
     #define SOC_FULL_CAP (75000*3600u)     //let's say, 75,000mAh
     #define SOC_FULL      (115000u)   //when voltage reaches 115V, consider it full
-    #define BALANCE_THRESHOLD (15u)
+    #define BALANCE_THRESHOLD (10u)
     
     #define N_OF_CELL (168u)
     #define N_OF_TEMP (84u) // Monitoring the CELLS
@@ -177,7 +177,7 @@ void  bms_init();
  * @param no input parameters.
  * @return 1 if everything is OK. 0 for hard failure.
  */
-void check_cfg();
+void check_cfg(uint8_t rx_cfg[][8]);
 
 
 /**
@@ -317,6 +317,7 @@ void update_soc();
 uint8_t bat_health_check();
 void _SOC_log();
 void bat_balance();
+void bat_clear_balance();
 void DEBUG_balancing_on();
 double mvToC(uint16_t mv);
 uint8_t open_wire_adow(uint8_t pup);

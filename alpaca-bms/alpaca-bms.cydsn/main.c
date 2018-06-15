@@ -35,6 +35,8 @@ volatile uint8_t CAN_DEBUG=0;
 volatile uint8_t RACING_FLAG=0;    // this flag should be set in CAN handler
 BAT_SOC_t bat_soc;
 
+uint8_t rx_cfg[IC_PER_BUS][8];
+
 void DEBUG_send_cell_voltage();
 void DEBUG_send_temp();
 void DEBUG_send_current();
@@ -199,13 +201,11 @@ void debugMain() {
     }
         
 }
-
+bool BALANCE_FLAG = true;
 int main(void)
 {
-    
     // Stablize the BMS OK signal when system is still setting up
     OK_SIG_Write(1);
-    
     
     
 	// Initialize state machine
@@ -255,14 +255,13 @@ int main(void)
                 // while loop with get volt get temp and bat_balance no delays
                 // DCP Enable in 68042.c!!!
 			    OK_SIG_Write(1);
-			    check_cfg();  //CANNOT be finished, because 
+			    //check_cfg(rx_cfg);  //CANNOT be finished, because 
 				
                 
 		        get_cell_volt();// TODO test voltage
 				//TESTDAY_2_TODO. check_stack_fuse(); // TODO: check if stacks are disconnected
 				get_cell_temp();// TODO test temperature
                 
-				
                 // TODO: Calculate SOC
                 //get_current(); // TODO get current reading from sensor
 			    //bat_soc = get_soc(); // TODO calculate SOC()
@@ -270,15 +269,27 @@ int main(void)
 			    
                 //SKY_TODO update_soc();
 
+                /*
+                //Uncomment all of this to balance
+                if (bat_pack.HI_temp_board_c >= 60) {
+                    BALANCE_FLAG = false;
+                } else if (bat_pack.HI_temp_board_c < 55) {
+                    BALANCE_FLAG = true;
+                }
                 
-                //Uncomment all of this to blance
-                //CyDelay(5000); 
                 
-                //bat_balance();
-                //bat_balance();
-                
-                //CyDelay(5000);
-                
+                if (BALANCE_FLAG) {
+                    
+                    // Turn on cell discharging
+                    bat_balance();
+                    bat_balance();
+                    // Let it discharge for 5 seconds
+                    CyDelay(5000);
+                    bat_clear_balance();
+                    // Let the boards cool down
+                    CyDelay(2000);
+                } 
+                */
                 
                 bat_health_check();
                 if (bat_pack.health == FAULT){

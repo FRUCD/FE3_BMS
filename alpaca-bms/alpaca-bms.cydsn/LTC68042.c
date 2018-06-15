@@ -119,6 +119,9 @@ void set_adc(uint8_t MD, //ADC Mode
   ADAX[0] = md_bits + 0x04;
   md_bits = (MD & 0x01) << 7;
   ADAX[1] = md_bits + 0x60 + CHG ;
+
+  // for ADOL (checking both adcs are the same). Get rid of this for real use.
+  //ADCV[1] = ADCV[1] & 0x81;
   
 }
 
@@ -749,16 +752,16 @@ void LTC6804_wrcfg(uint8_t total_ic,uint8_t config[][6])
   
   //2
   cmd_index = 4;
-  for (uint8_t current_ic = total_ic; current_ic > 0; current_ic--) 			// executes for each LTC6804 in stack, 
+  for (uint8_t current_ic = 0; current_ic < total_ic; current_ic++) 			// executes for each LTC6804 in stack, 
   {								
     for (uint8_t current_byte = 0; current_byte < BYTES_IN_REG; current_byte++) // executes for each byte in the CFGR register
     {							// i is the byte counter
 	
-      cmd[cmd_index] = config[current_ic-1][current_byte]; 		//adding the config data to the array to be sent 
+      cmd[cmd_index] = config[current_ic][current_byte]; 		//adding the config data to the array to be sent 
       cmd_index = cmd_index + 1;                
     }
 	//3
-    temp_pec = (uint16_t)pec15_calc(BYTES_IN_REG, &config[current_ic-1][0]);// calculating the PEC for each board
+    temp_pec = (uint16_t)pec15_calc(BYTES_IN_REG, &config[current_ic][0]);// calculating the PEC for each board
     cmd[cmd_index] = (uint8_t)(temp_pec >> 8);
     cmd[cmd_index + 1] = (uint8_t)temp_pec;
     cmd_index = cmd_index + 2;
@@ -767,14 +770,30 @@ void LTC6804_wrcfg(uint8_t total_ic,uint8_t config[][6])
   //4
   wakeup_idle (); 															 //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
   //5
-   for(int current_ic = 0; current_ic<total_ic; current_ic++)
+    int fake_ic = 13;
+    uint8_t full_cmd[12];
+	cmd[0] = 0x80 + (fake_ic<<3); //Setting address
+    temp_pec = pec15_calc(2, cmd);
+	cmd[2] = (uint8_t)(temp_pec >> 8);
+	cmd[3] = (uint8_t)(temp_pec); 
+    
+    memcpy(full_cmd, cmd, 4);
+    memcpy(full_cmd + 4, &cmd[4+(8*fake_ic)], 8);
+	spi_write_array(12, full_cmd);
+    
+   for(int current_ic = 0; current_ic < total_ic; current_ic++)
   {
+    uint8_t full_cmd[12];
 	cmd[0] = 0x80 + (current_ic<<3); //Setting address
     temp_pec = pec15_calc(2, cmd);
 	cmd[2] = (uint8_t)(temp_pec >> 8);
 	cmd[3] = (uint8_t)(temp_pec); 
-	spi_write_array(4,cmd);
-	spi_write_array(8,&cmd[4+(8*current_ic)]);
+    
+    memcpy(full_cmd, cmd, 4);
+    memcpy(full_cmd + 4, &cmd[4+(8*current_ic)], 8);
+	spi_write_array(12, full_cmd);
+    //spi_write_array(4,cmd);
+	//spi_write_array(8,&cmd[4+(8*current_ic)]);
   }
 }
 /*
@@ -939,6 +958,7 @@ void spi_write_array(uint8_t len, // Option: Number of bytes to be written on th
   {
      LTC68_WriteTxData((int8_t)data[i]);
   }
+  CyDelay(1);
 
   CS_Write(1);
   CyDelay(1);
@@ -1061,7 +1081,7 @@ void LTC6804_init_cfg()
     tx_cfg[i][2] = 0x00;
     tx_cfg[i][3] = 0x00; 
     tx_cfg[i][4] = 0x00;
-    tx_cfg[i][5] = 0x20; // DCTO=0x2 1 min // was 0x20
+    tx_cfg[i][5] = 0x20; // DCTO=0x2 1 min
   }
  
 }
