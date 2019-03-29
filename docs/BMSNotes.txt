@@ -14,9 +14,21 @@ IC set to 1 (should be 9)
 IC, Actual
 3.4827,
 
-1A - Fried psoc, good chips for data, but weird balancing thing??
-2A - Good psoc
-3A - 
-1B - Good chips
-2B - 
-3B - Good psoc
+1A - NOT
+2A - FIXED
+3A - COOKED
+1B - FIXED
+2B - FIXED
+3B - NOT
+
+
+1
+1XXX X000 XXXX
+1XXX X001
+1XXX X002
+
+11001111
+0xAF
+
+
+1111 1111 1111

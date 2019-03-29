@@ -185,7 +185,7 @@ static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 
 
 
 // User defined
-uint8_t tx_cfg[1][6];
+uint8_t tx_cfg[9][6];
 void LTC6804_init_cfg();
 
 // Between these comments
@@ -195,6 +195,8 @@ void LTC6804_initialize();
 void set_adc(uint8_t MD, uint8_t DCP, uint8_t CH, uint8_t CHG);
 
 void LTC6804_adcv(); 
+
+void LTC6804_adow(uint8_t pup);
 
 void LTC6804_adax();
 
@@ -223,5 +225,5 @@ uint16_t pec15_calc(uint8_t len, uint8_t *data);
 void spi_write_array( uint8_t length, uint8_t *data);
 
 void spi_write_read(uint8_t *TxData, uint8_t TXlen, uint8_t *rx_data, uint8_t RXlen);
-
+void my_spi_write_read(uint8_t *TxData, uint8_t TXlen, uint8_t *rx_data, uint8_t RXlen);
 #endif

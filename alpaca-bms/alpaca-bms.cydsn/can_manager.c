@@ -24,14 +24,14 @@ void can_send_temp(volatile uint8_t high_temp0,
     volatile uint8_t high_tempNode,
     volatile uint8_t high_temp)
 {
-    can_buffer[0] = (high_temp0/10)<<4 | (high_temp0%10);
-    can_buffer[1] = (high_temp1/10)<<4 | (high_temp1%10);
-    can_buffer[2] = (high_temp2/10)<<4 | (high_temp2%10);
-    can_buffer[3] = (high_temp3/10)<<4 | (high_temp3%10);
-    can_buffer[4] = (high_temp4/10)<<4 | (high_temp4%10);
-    can_buffer[5] = (high_temp5/10)<<4 | (high_temp5%10);
+    can_buffer[0] = high_temp0; //(high_temp0/10)<<4 | (high_temp0%10);
+    can_buffer[1] = high_temp1; //(high_temp1/10)<<4 | (high_temp1%10);
+    can_buffer[2] = high_temp2; //(high_temp2/10)<<4 | (high_temp2%10);
+    can_buffer[3] = high_temp3; //(high_temp3/10)<<4 | (high_temp3%10);
+    can_buffer[4] = high_temp4; //(high_temp4/10)<<4 | (high_temp4%10);
+    can_buffer[5] = high_temp5; //(high_temp5/10)<<4 | (high_temp5%10);
     can_buffer[6] = 0xff & high_tempNode;
-    can_buffer[7] = (high_temp/10)<<4 | (high_temp%10);
+    can_buffer[7] = high_temp; //(high_temp/10)<<4 | (high_temp%10);
             
 	CAN_1_SendMsgtemp();
     CyDelay(5);

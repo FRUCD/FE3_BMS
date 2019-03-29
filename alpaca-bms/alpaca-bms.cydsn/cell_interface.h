@@ -18,24 +18,20 @@
     #include <project.h>
     #include "can_manager.h"
    
-    
-    // Stores cell data
-    uint16_t cell_codes[IC_PER_BUS][12]; 
-    uint16_t aux_codes[IC_PER_BUS][6];
-   
-    
-    #define ERROR_VOLTAGE_LIMIT (10u)
-    #define ERROR_TEMPERATURE_LIMIT (10u)
+    #define ERROR_VOLTAGE_LIMIT (4u)
+    #define ERROR_TEMPERATURE_LIMIT (4u)
     #define FUSE_BAD_LIMIT (10u)
     #define BAD_FILTER_LIMIT (10u)
     
     #define CELL_ENABLE_HIGH (0x7DF)
     #define CELL_ENABLE_LOW (0x3DF)
-    #define OVER_VOLTAGE (4500u)
-    #define UNDER_VOLTAGE (2800u)
+    #define OVER_VOLTAGE (4200u) // Updated for FE5 (4.2V)
+    #define UNDER_VOLTAGE (2500u) // Updated for FE5 (2.5V)
     #define STACK_VOLT_DIFF_LIMIT (9000u)   //9 volt
     #define CRITICAL_TEMP_L (0u)          // 0 C
     #define CRITICAL_TEMP_H (60u)             //60 C
+    #define CRITICAL_TEMP_BOARD_L (0u)          // 0 C
+    #define CRITICAL_TEMP_BOARD_H (60u)  
     #define BAD_THERM_LIMIT (15u)
     #define SOC_NOMIAL      (50000*3600u)    //nomial SOC before calibration
     #define SOC_CALI_HIGH (106000u)     //High cali point at 106V
@@ -44,14 +40,21 @@
     #define SOC_SOC_LOW   (10000*3600u)      //manually set it in mAh
     #define SOC_FULL_CAP (75000*3600u)     //let's say, 75,000mAh
     #define SOC_FULL      (115000u)   //when voltage reaches 115V, consider it full
-    #define BALANCE_THRESHOLD (15u)
+    #define BALANCE_THRESHOLD (10u)
     
     #define N_OF_CELL (168u)
     #define N_OF_TEMP (84u) // Monitoring the CELLS
-    #define N_OF_TEMP_BOARD (36u) // Number of thermistors monitoring the BOARD
+    #define N_OF_TEMP_BOARD (54u) // Number of thermistors monitoring the BOARD
 
     #define N_OF_SUBPACK (6u)
     #define N_OF_BUSSES (2u)
+    
+    // Stores cell data
+    uint16_t cell_codes[IC_PER_BUS * N_OF_BUSSES][12]; 
+    uint16_t cell_codes_lower[IC_PER_BUS][12]; 
+    uint16_t cell_codes_higher[IC_PER_BUS][12]; 
+    
+    uint16_t aux_codes[IC_PER_BUS][6];
 
     #define OVER_TEMP (60u)             //now it just for debug purpose
     #define UNDER_TEMP (0u)
@@ -107,7 +110,7 @@ typedef struct
 typedef struct
 {
   volatile uint16_t temp_raw;
-  volatile uint8_t temp_c;
+  volatile double temp_c;
   volatile uint8_t bad_counter;
   volatile uint8_t type;
   volatile uint8_t bad_type;
@@ -120,10 +123,12 @@ typedef struct
   volatile BAT_TEMP_t *temps[N_OF_TEMP / N_OF_SUBPACK]; // 14 Thermistors per subpack (measuring cells)
   volatile BAT_TEMP_t *board_temps[N_OF_TEMP_BOARD / N_OF_SUBPACK];
   volatile uint8 high_temp;
-  volatile uint16_t over_temp;
-  volatile uint16_t under_temp;
-  volatile uint16_t over_voltage;
-  volatile uint16_t under_voltage;
+  volatile uint32_t over_temp;
+  volatile uint32_t under_temp;
+  volatile uint32_t over_voltage;
+  volatile uint32_t under_temp_board;
+  volatile uint32_t over_temp_board;
+  volatile uint32_t under_voltage;
   volatile uint32_t voltage;
   volatile uint8_t bad_counter;
 }BAT_SUBPACK_t;
@@ -140,6 +145,8 @@ typedef struct
   volatile uint8_t SOC_percent;
   volatile uint8_t SOC_cali_flag;
   volatile uint8_t HI_temp_c;
+  volatile uint8_t HI_temp_board_c;
+  volatile uint8_t HI_temp_board_node;
   volatile uint8_t HI_temp_node;
   volatile uint8_t HI_temp_raw;
   volatile uint16_t HI_voltage;
@@ -170,7 +177,7 @@ void  bms_init();
  * @param no input parameters.
  * @return 1 if everything is OK. 0 for hard failure.
  */
-void check_cfg();
+void check_cfg(uint8_t rx_cfg[][8]);
 
 
 /**
@@ -244,7 +251,7 @@ void check_volt();
  * @param 1 input parameters, which is raw aux_codes.
  * @return NULL.
  */
-void update_temp(volatile uint16_t aux_codes[IC_PER_BUS][6]);
+void update_temp(volatile uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2]);
 
 /**
  * @check temperature and detect error
@@ -310,7 +317,10 @@ void update_soc();
 uint8_t bat_health_check();
 void _SOC_log();
 void bat_balance();
+void bat_clear_balance();
 void DEBUG_balancing_on();
+double mvToC(uint16_t mv);
+uint8_t open_wire_adow(uint8_t pup);
 
 uint8_t SKY_get_cell_volt();
 

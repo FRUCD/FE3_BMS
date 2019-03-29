@@ -11,7 +11,7 @@
 
 //#define WDT_ENABLE
 
-#define DEBUG_MODE
+//#define DEBUG_MODE
 
 typedef enum 
 {
@@ -34,6 +34,8 @@ extern volatile uint8_t bat_err_index_loop;
 volatile uint8_t CAN_DEBUG=0;
 volatile uint8_t RACING_FLAG=0;    // this flag should be set in CAN handler
 BAT_SOC_t bat_soc;
+
+uint8_t rx_cfg[IC_PER_BUS][8];
 
 void DEBUG_send_cell_voltage();
 void DEBUG_send_temp();
@@ -66,20 +68,20 @@ void process_event(){
     CyDelay(10);
 
     // send temperature
-    /*
+    
     // TEST_DAY_1
-    can_send_temp(bat_pack.nodes[0]->high_temp,
-				bat_pack.nodes[1]->high_temp,
-                bat_pack.nodes[2]->high_temp,
-                bat_pack.nodes[3]->high_temp,
-                bat_pack.nodes[4]->high_temp,
-                bat_pack.nodes[5]->high_temp,
+    can_send_temp(bat_pack.subpacks[0]->high_temp,
+				bat_pack.subpacks[1]->high_temp,
+                bat_pack.subpacks[2]->high_temp,
+                bat_pack.subpacks[3]->high_temp,
+                bat_pack.subpacks[4]->high_temp,
+                bat_pack.subpacks[5]->high_temp,
 				bat_pack.HI_temp_node,
 				bat_pack.HI_temp_c);
-    */
+    
     // send current
-    CyDelay(10);
-    can_send_current(bat_pack.current);
+    //CyDelay(10);
+    //can_send_current(bat_pack.current);
     CyDelay(10);
     
     CyGlobalIntEnable;
@@ -174,24 +176,43 @@ void process_failure(){
 }
 
 void debugMain() {
-    wakeup_sleep();
+    //while(1) { wakeup_sleep(); };
+    uint8_t txData[2] = {0x1E, 0xEE};
+    uint8_t rxData[23];
+    int t = 0;
     while(1) {
-        // For debugging stay in here.
-        CyDelay(500);
-        get_cell_volt();
-        //wakeup_sleep();
-    }
-}
 
+        // For debugging stay in here.
+        
+        //get_cell_volt();
+        //wakeup_sleep();
+        CyDelay(500);
+        //Select6820_Write(0);
+        //my_spi_write_read(txData, 2, rxData, 23);
+        //open_wire_adow(0x1);
+        //open_wire_adow(0x0);
+        
+        get_cell_volt();
+        get_cell_temp();
+        t++;
+    }
+    while(1) {
+        // DO nothing
+    }
+        
+}
+bool BALANCE_FLAG = true;
 int main(void)
 {
     // Stablize the BMS OK signal when system is still setting up
     OK_SIG_Write(1);
     
+    
 	// Initialize state machine
 	BMS_MODE bms_status = BMS_BOOTUP;
 	uint32_t system_interval = 0;
     uint8_t led = 0;
+   
     
 	while(1){
 		switch (bms_status){
@@ -205,13 +226,17 @@ int main(void)
 			        CyWdtStart(CYWDT_1024_TICKS,CYWDT_LPMODE_NOCHANGE);
                 #endif
                 
+                
 				// Initialize
-                SOC_Store_Start();
-                SOC_Timer_Start();
+                //SOC_Store_Start();
+                //SOC_Timer_Start();
 				bms_init();
 				mypack_init();
-				current_init();
-
+				
+                //current_init();
+                
+                
+                
 			    //monitor_init();
 			    
 			    //enable global interrupt
@@ -227,36 +252,50 @@ int main(void)
 				break;
 
 			case BMS_NORMAL:
-                
+                // while loop with get volt get temp and bat_balance no delays
+                // DCP Enable in 68042.c!!!
 			    OK_SIG_Write(1);
-			    check_cfg();  //CANNOT be finished, because 
+			    //check_cfg(rx_cfg);  //CANNOT be finished, because 
 				
-		        get_cell_volt();// TODO Get voltage
-				//TESTDAY_2_TODO. check_stack_fuse(); // TODO: check if stacks are disconnected
-				//TESTDAY_1_TODO. get_cell_temp();// TODO Get temperature
                 
-				/*
+		        get_cell_volt();// TODO test voltage
+				//TESTDAY_2_TODO. check_stack_fuse(); // TODO: check if stacks are disconnected
+				get_cell_temp();// TODO test temperature
+                
                 // TODO: Calculate SOC
-                get_current(); // TODO get current reading from sensor
-			    bat_soc = get_soc(); // TODO calculate SOC()
+                //get_current(); // TODO get current reading from sensor
+			    //bat_soc = get_soc(); // TODO calculate SOC()
 				// because it is normal mode, just set a median length current reading interval
-			    */
+			    
                 //SKY_TODO update_soc();
 
                 /*
-                //Uncomment all of this to blance
-                CyDelay(5000); // 1500 works for test bench
+                //Uncomment all of this to balance
+                if (bat_pack.HI_temp_board_c >= 60) {
+                    BALANCE_FLAG = false;
+                } else if (bat_pack.HI_temp_board_c < 55) {
+                    BALANCE_FLAG = true;
+                }
                 
-                bat_balance();
-                bat_balance();
                 
-                CyDelay(5000);
+                if (BALANCE_FLAG) {
+                    
+                    // Turn on cell discharging
+                    bat_balance();
+                    bat_balance();
+                    // Let it discharge for 5 seconds
+                    CyDelay(5000);
+                    bat_clear_balance();
+                    // Let the boards cool down
+                    CyDelay(2000);
+                } 
                 */
                 
                 bat_health_check();
                 if (bat_pack.health == FAULT){
 					bms_status = BMS_FAULT;
 				}
+                
                 
                 set_current_interval(100);
 				system_interval = 500;

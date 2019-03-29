@@ -12,6 +12,7 @@
 #include "cell_interface.h"
 #include "current_sense.h"
 #include "LTC68042.h"
+#include "Select6820.h"
 #include "math.h"
 
 #include <stdlib.h>
@@ -21,6 +22,7 @@ uint8_t fatal_err;
 // FE3 new structure
 BAT_CELL_t bat_cell[N_OF_CELL];
 BAT_TEMP_t bat_temp[N_OF_TEMP];
+BAT_TEMP_t board_temp[N_OF_TEMP_BOARD];
 BAT_SUBPACK_t bat_subpack[N_OF_SUBPACK];
 volatile BAT_ERR_t bat_err;
 BAT_PACK_t bat_pack;
@@ -44,7 +46,10 @@ void  bms_init(){
     SS_SetDriveMode(SS_DM_RES_UP);
     LTC68_Start();
     LTC6804_initialize();
-    LTC6804_wrcfg(IC_PER_BUS,tx_cfg);
+    Select6820_Write(0); // Configure each bus
+    LTC6804_wrcfg(IC_PER_BUS, tx_cfg);
+    Select6820_Write(1);
+    LTC6804_wrcfg(IC_PER_BUS, tx_cfg);
 }
 
 
@@ -77,11 +82,11 @@ void mypack_init(){
         bat_temp[temp].type = THERM_CELL;
     }
     for (temp = 0; temp < N_OF_TEMP_BOARD; temp++){
-        bat_temp[temp].temp_c = (uint8_t)temp;
-        bat_temp[temp].temp_raw = (uint16_t)temp;
-        bat_temp[temp].bad_counter = 0;
-        bat_temp[temp].bad_type = 0;
-        bat_temp[temp].type = THERM_BOARD;
+        board_temp[temp].temp_c = (uint8_t)temp;
+        board_temp[temp].temp_raw = (uint16_t)temp;
+        board_temp[temp].bad_counter = 0;
+        board_temp[temp].bad_type = 0;
+        board_temp[temp].type = THERM_BOARD;
     }
 
     for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
@@ -92,7 +97,7 @@ void mypack_init(){
             bat_subpack[subpack].temps[temp] = &(bat_temp[subpack*(N_OF_TEMP / N_OF_SUBPACK)+temp]);
         }
         for (temp = 0; temp < (N_OF_TEMP_BOARD / N_OF_SUBPACK); temp++){
-            bat_subpack[subpack].board_temps[temp] = &(bat_temp[subpack*(N_OF_TEMP_BOARD / N_OF_SUBPACK)+temp]);
+            bat_subpack[subpack].board_temps[temp] = &(board_temp[subpack*(N_OF_TEMP_BOARD / N_OF_SUBPACK)+temp]);
         }
         
         bat_subpack[subpack].over_temp = 0;
@@ -107,6 +112,7 @@ void mypack_init(){
         bat_pack.subpacks[subpack] = &(bat_subpack[subpack]);
     }
     
+    /*
     // get SOC
     uint32_t temp_SOC = SOC_Store_ReadByte(0x00)<<24;
     temp_SOC |= SOC_Store_ReadByte(0x01)<<16;
@@ -117,6 +123,7 @@ void mypack_init(){
         temp_SOC = SOC_NOMIAL;
     }
     bat_pack.current_charge = temp_SOC;
+    */
     
     //give the pack non-0 value help debuging CAN
     bat_pack.voltage = 12;
@@ -146,7 +153,17 @@ void  wake_up(){
     wakeup_sleep();
 }
 
-void check_cfg(){
+void check_cfg(uint8_t rx_cfg[][8]){
+    LTC68_ClearFIFO();
+    int error1 = 0;
+    int error2 = 0;
+    
+    Select6820_Write(0);
+    wakeup_sleep();
+    CyDelay(1);
+    //for (int i = 0; i < 100; i++) {
+        LTC6804_rdcfg(IC_PER_BUS, rx_cfg);
+        LTC6804_rdcfg(IC_PER_BUS, rx_cfg);
     /*
     //DEBUG_UART_PutString("Enter Check_CFG\n");
     int i=0;
@@ -172,19 +189,62 @@ void check_chips(){
 
 uint8_t get_cell_volt(){
     LTC68_ClearFIFO();
-    int error;
+    int error1 = 0;
+    int error2 = 0;
+    
+    Select6820_Write(0);
     wakeup_sleep();
-    LTC6804_adcv();
+    CyDelay(1); // Waited more
+    //for (int i = 0; i < 100; i++) {
+        LTC6804_adcv();
+        LTC6804_adcv();
+    //}
+    CyDelay(1); // Give it time before switching
+    
+    Select6820_Write(1);
+    wakeup_sleep();
+    //for (int i = 0; i < 100; i++) {
+        LTC6804_adcv();
+        LTC6804_adcv();
+    //}
+    
+    CyDelay(100);
+    
+    Select6820_Write(0); // Select a bus
+    wakeup_sleep();
     CyDelay(10);
+    //uint16_t *test = (uint16_t*)(&cell_codes[IC_PER_BUS]); // SHOULD PROBABLY REPLACE WITH SOMETHING LIKE 
+                                                             // instead of copying values from two arrays
+    
+    error1 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_lower); // Set to read back all cell voltage registers
+    error1 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_lower); // Set to read back all cell voltage registers
+    
+    CyDelay(1); // Give it a moment before switching.
+    Select6820_Write(1); // Select a bus
     wakeup_sleep();
-    error = LTC6804_rdcv(0, IC_PER_BUS,cell_codes); // Set to read back all cell voltage registers
-    if (error == -1)
+    CyDelay(10);
+    error2 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_higher);
+    error2 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_higher);
+    
+    if (error1 == -1 || error2 == -1)
     {
         #ifdef DEBUG_LCD
             LCD_Position(0u,10u);
             LCD_PrintString("ERROR");
         #endif
        return 1;
+    }
+    
+    for (unsigned int i = 0; i < IC_PER_BUS; i++) {
+        for (int j = 0; j < 12; j++) {
+            cell_codes[i][j] = cell_codes_lower[i][j];
+        } 
+    }
+    
+    for (unsigned int i = 0; i < IC_PER_BUS; i++) {
+        for (int j = 0; j < 12; j++) {
+            cell_codes[i + IC_PER_BUS][j] = cell_codes_higher[i][j];
+        } 
     }
     
     //get information
@@ -194,20 +254,46 @@ uint8_t get_cell_volt(){
     check_volt();
 
     
-    return error;
+    if (error1 == -1 || error2 == -2) {
+        return -1;   
+    } else {
+        return 0;   
+    }
 }// get_cell_volt()
 
-
-uint8_t SKY_get_cell_volt(){
+uint8_t open_wire_adow(uint8_t pup){
     LTC68_ClearFIFO();
-   // DEBUG_UART_PutString("Enter GET_CELL_VOLT\n");
-    int error;
+    int error1 = 0;
+    int error2 = 0;
+    
+    Select6820_Write(0);
     wakeup_sleep();
-    LTC6804_adcv();
-    CyDelay(10); 
+    CyDelay(100); // Waited more
+    for (int i = 0; i < 3; i++) {
+        LTC6804_adow(pup);
+    }
+    CyDelay(100); // Give it time before switching
+    
+    Select6820_Write(1);
     wakeup_sleep();
-    error = LTC6804_rdcv(0, IC_PER_BUS,cell_codes); // Set to read back all cell voltage registers
-    if (error == -1)
+    LTC6804_adow(pup);
+    
+    CyDelay(10);
+    
+    Select6820_Write(0); // Select a bus
+    wakeup_sleep();
+    CyDelay(1);
+    //uint16_t *test = (uint16_t*)(&cell_codes[IC_PER_BUS]); // SHOULD PROBABLY REPLACE WITH SOMETHING LIKE 
+                                                             // instead of copying values from two arrays
+    error1 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_lower); // Set to read back all cell voltage registers
+    error1 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_lower); // Set to read back all cell voltage registers
+    
+    CyDelay(10); // Give it a moment before switching.
+    Select6820_Write(1); // Select a bus
+    wakeup_sleep();
+    error2 = LTC6804_rdcv(0, IC_PER_BUS, cell_codes_higher);
+    
+    if (error1 == -1 || error2 == -1)
     {
         #ifdef DEBUG_LCD
             LCD_Position(0u,10u);
@@ -216,10 +302,51 @@ uint8_t SKY_get_cell_volt(){
        return 1;
     }
     
-    return error;
+    for (unsigned int i = 0; i < IC_PER_BUS; i++) {
+        for (int j = 0; j < 12; j++) {
+            cell_codes[i][j] = cell_codes_lower[i][j];
+        } 
+    }
+    
+    for (unsigned int i = 0; i < IC_PER_BUS; i++) {
+        for (int j = 0; j < 12; j++) {
+            cell_codes[i + IC_PER_BUS][j] = cell_codes_higher[i][j];
+        } 
+    }
+    
+    //get information
+    update_volt(cell_codes);
+    
+    //check error
+    check_volt();
+
+    
+    if (error1 == -1 || error2 == -2) {
+        return -1;   
+    } else {
+        return 0;   
+    }
 }// get_cell_volt()
 
 uint8_t get_cell_temp(){
+    uint8_t command[3];
+    uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2];
+    
+    // PSOCs have addresses 9 through 11
+    for (uint8_t bus = 0; bus < N_OF_BUSSES; bus++) {
+        Select6820_Write(bus);
+        int address = 9;
+        for (int i = 0; i < 3; i++, address++) {
+            for (uint8_t j = 0; j < 3; j++)
+                command[j] = (0x80 | (address << 3)) + j;
+            my_spi_write_read(command, 3, rawTemp + (46 * i) + 
+                              (bus * (N_OF_TEMP + N_OF_TEMP_BOARD)), 46); // There are 69 thermistors on each bus, 2 bytes per reading
+        }
+    }
+    
+    update_temp(rawTemp);
+    check_temp();
+    /*
     int error;
     wakeup_sleep();
     LTC6804_adax();
@@ -260,6 +387,7 @@ uint8_t get_cell_temp(){
         LCD_Position(0u,10u);
         LCD_PrintString("OK");
     #endif
+    */
     return 0;
 }// get_cell_temp()
 
@@ -317,7 +445,7 @@ uint8_t check_cells(){
 }// check_cells()
 
 
-void update_volt(volatile uint16_t cell_codes[IC_PER_BUS][12]){
+void update_volt(volatile uint16_t cell_codes[IC_PER_BUS * N_OF_BUSSES][12]){
     uint8_t cell = 0;
     uint8_t raw_cell = 0;
     uint8_t node = 0;
@@ -326,9 +454,9 @@ void update_volt(volatile uint16_t cell_codes[IC_PER_BUS][12]){
     uint32_t temp_volt;
     
     // Update cell voltages
-    for (ic=0;ic<IC_PER_BUS;ic++){
+    for (ic = 0; ic < IC_PER_BUS * N_OF_BUSSES; ic++){
         for (raw_cell=0;raw_cell<12;raw_cell++){
-            if (ic == 2 || ic == 5 || ic == 8) { // These ICs have different cells used
+            if (ic == 2 || ic == 5 || ic == 8 || ic == 11 || ic == 14 || ic == 17) { // These ICs have different cells used
                 if ((CELL_ENABLE_HIGH & (0x1<<raw_cell))){
                     bat_cell[cell].voltage = cell_codes[ic][raw_cell]/10;  //only record in mV not in 0.1mV
                     cell++;
@@ -341,19 +469,25 @@ void update_volt(volatile uint16_t cell_codes[IC_PER_BUS][12]){
             }
         }
     }
-
+    
+    if (bat_subpack[2].cells[22]->voltage > 4199)
+        bat_subpack[2].cells[22]->voltage = 4199;
+    if (bat_subpack[2].cells[23]->voltage > 4199)
+        bat_subpack[2].cells[23]->voltage = 4199;
     // Update subpack and pack voltages
     temp_volt = 0;
     uint32_t temp_pack_volt = 0;
     for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
-        for (cell = 0; cell< (N_OF_CELL / N_OF_SUBPACK); cell++){
+        temp_volt = 0;
+        for (cell = 0; cell < (N_OF_CELL / N_OF_SUBPACK); cell++){
             temp_volt += (uint32_t)(bat_subpack[subpack].cells[cell]->voltage);
         }
         bat_subpack[subpack].voltage = temp_volt;
         temp_pack_volt += temp_volt;
     }
-    bat_pack.voltage = temp_volt / N_OF_SUBPACK;   
+    bat_pack.voltage = temp_pack_volt / N_OF_SUBPACK;   
 }
+
 
 void check_volt(){
     uint8_t cell = 0;
@@ -420,106 +554,143 @@ void check_volt(){
 }
 
                 
-
-
-void update_temp(volatile uint16_t aux_codes[IC_PER_BUS][6]){
-    uint8_t ic=0;
-    uint16_t temp;
-    uint8_t i=0;
-
-
-
-    // FE3 new data structure
-    // update node
-    temp = 0;
-    for (ic = 0; ic < 12; ic++){
-        for (i = 0; i < 5; i++){
-            bat_temp[temp].temp_raw = aux_codes[ic][i];
-            bat_temp[temp].temp_ref = aux_codes[ic][5];
-            bat_temp[temp].temp_c = (uint8_t)temp_transfer(aux_codes[ic][i], aux_codes[ic][5]);
-
-            temp++;
+// Convert mv to degrees C
+double mvToC(uint16_t mv) {
+    double v = (double)mv / 1000;
+    double RT = (v*10000/(5.0-v));
+    double T = (1/((1/298.15)+((double)1/3428)*log(RT/10000)))-273.15;
+    return T;
+}
+void update_temp(volatile uint8_t rawTemp[(N_OF_TEMP + N_OF_TEMP_BOARD) * 2]) {
+    uint16_t rawIndex = 0;
+    uint16_t batIndex = 0;
+    uint16_t boardIndex = 0;
+    uint32_t temp = 0;
+    
+    for (uint16_t board = 0; board < 6; board++) {
+        for (uint8_t cellTemp = 0; cellTemp < 14; cellTemp++) {
+            bat_temp[batIndex].temp_raw = rawTemp[rawIndex++] << 8; // Upper bits
+            bat_temp[batIndex].temp_raw |= rawTemp[rawIndex++];
+            bat_temp[batIndex].temp_c = mvToC(bat_temp[batIndex].temp_raw);
+            batIndex++;
+        }
+        for (uint16_t boardTemp = 0; boardTemp < 9; boardTemp++) {
+            
+            board_temp[boardIndex].temp_raw = rawTemp[rawIndex++] << 8; // Upper bits
+            board_temp[boardIndex].temp_raw |= rawTemp[rawIndex++];
+            board_temp[boardIndex].temp_c = mvToC(board_temp[boardIndex].temp_raw);
+            boardIndex++;
         }
     }
     
+    // Deal with bad thermistors by setting them to nearby thermistors
+    bat_subpack[1].temps[3]->temp_raw = bat_subpack[1].temps[2]->temp_raw;
+    bat_subpack[1].temps[3]->temp_c = bat_subpack[1].temps[2]->temp_c;
     
+    bat_subpack[1].temps[4]->temp_raw = bat_subpack[1].temps[5]->temp_raw;
+    bat_subpack[1].temps[4]->temp_c = bat_subpack[1].temps[5]->temp_c;
 
+    bat_subpack[1].temps[11]->temp_raw = bat_subpack[1].temps[12]->temp_raw;
+    bat_subpack[1].temps[11]->temp_c = bat_subpack[1].temps[12]->temp_c;
+    
+    bat_subpack[4].temps[8]->temp_raw = bat_subpack[4].temps[10]->temp_raw;
+    bat_subpack[4].temps[8]->temp_c = bat_subpack[4].temps[10]->temp_c;
+    
+    bat_subpack[1].board_temps[6]->temp_raw = bat_subpack[1].board_temps[7]->temp_raw;
+    bat_subpack[1].board_temps[6]->temp_c = bat_subpack[1].board_temps[7]->temp_c;
+
+    bat_subpack[3].board_temps[2]->temp_raw = bat_subpack[3].board_temps[1]->temp_raw;
+    bat_subpack[3].board_temps[2]->temp_c = bat_subpack[3].board_temps[1]->temp_c;
+    
+    // Reading high at test day 3
+    bat_subpack[3].board_temps[6]->temp_raw = bat_subpack[3].board_temps[7]->temp_raw;
+    bat_subpack[3].board_temps[6]->temp_c = bat_subpack[3].board_temps[7]->temp_c;
+
+    bat_subpack[5].board_temps[7]->temp_raw = bat_subpack[5].board_temps[6]->temp_raw;
+    bat_subpack[5].board_temps[7]->temp_c = bat_subpack[5].board_temps[6]->temp_c;
+    
 }
 
 
 void check_temp(){
-        /*
+        
     // TEST_DAY_1
     uint8_t temp=0;
-    uint8_t node=0;
+    uint8_t subpack=0;
+    uint8_t cell=0;
     uint16_t temp_c=0;
     
-    // 2/4/2016 Measurement on actual battery pack
-    // 0,7,20,21,27,30,33 are dead
-    bat_temp[0].temp_raw = bat_temp[1].temp_raw;
-    bat_temp[0].temp_c = bat_temp[1].temp_c;
-    
-    bat_temp[7].temp_raw = bat_temp[6].temp_raw;
-    bat_temp[7].temp_c = bat_temp[6].temp_c;
-    
-    bat_temp[20].temp_raw = bat_temp[22].temp_raw;
-    bat_temp[20].temp_c = bat_temp[22].temp_c;
-    
-    bat_temp[21].temp_raw = bat_temp[22].temp_raw;
-    bat_temp[21].temp_c = bat_temp[22].temp_c;
-    
-    bat_temp[27].temp_raw = bat_temp[28].temp_raw;
-    bat_temp[27].temp_c = bat_temp[28].temp_c;
-
-    bat_temp[30].temp_raw = bat_temp[31].temp_raw;
-    bat_temp[30].temp_c = bat_temp[31].temp_c;
-    
-    bat_temp[33].temp_raw = bat_temp[34].temp_raw;
-    bat_temp[33].temp_c = bat_temp[34].temp_c;
-    
     // check temp
-    for (node = 0; node<N_OF_TEMP; node++){
-        temp_c = bat_temp[node].temp_c;
+    for (cell = 0; cell < N_OF_TEMP; cell++){
+        temp_c = bat_temp[cell].temp_c;
         if (temp_c > (uint8_t)CRITICAL_TEMP_H){
             //if over temperature
-            bat_temp[node].bad_counter++;
-            bat_temp[node].bad_type = 1;
+            bat_temp[cell].bad_counter++;
+            bat_temp[cell].bad_type = 1;
         }else if (temp_c < (uint8_t)CRITICAL_TEMP_L){
             // if under temperature
-            bat_temp[node].bad_counter++;
-            bat_temp[node].bad_type = 0;
+            bat_temp[cell].bad_counter++;
+            bat_temp[cell].bad_type = 0;
         }else{
             //if there is no error
-            if (bat_temp[node].bad_counter>0){
-                bat_temp[node].bad_counter--;
+            if (bat_temp[cell].bad_counter > 0){
+                bat_temp[cell].bad_counter--;
+            }           
+        }
+    }
+    
+    // check board temps
+    for (cell = 0; cell < N_OF_TEMP_BOARD; cell++){
+        temp_c = board_temp[cell].temp_c;
+        if (temp_c > (uint8_t)CRITICAL_TEMP_BOARD_H){
+            //if over temperature
+            board_temp[cell].bad_counter++;
+            board_temp[cell].bad_type = 1;
+        }else if (temp_c < (uint8_t)CRITICAL_TEMP_BOARD_L){
+            // if under temperature
+            board_temp[cell].bad_counter++;
+            board_temp[cell].bad_type = 0;
+        }else{
+            //if there is no error
+            if (board_temp[cell].bad_counter > 0){
+                board_temp[cell].bad_counter--;
             }           
         }
     }
 
-    // update node
-    for (node = 0; node< N_OF_NODE; node++){
-        for (temp = 0; temp<10; temp++){
-            if (bat_node[node].temps[temp]->bad_counter > ERROR_TEMPERATURE_LIMIT){
-                if (bat_node[node].temps[temp]->bad_type == 0){
-                    bat_node[node].under_temp |= (1u<<temp);
+    // Update subpacks
+    for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
+        for (temp = 0; temp < (N_OF_TEMP / N_OF_SUBPACK); temp++){
+            if (bat_subpack[subpack].temps[temp]->bad_counter > ERROR_TEMPERATURE_LIMIT){
+                if (bat_subpack[subpack].temps[temp]->bad_type == 0){
+                    bat_subpack[subpack].under_temp |= (1u<<temp);
                 }else{
-                    bat_node[node].over_temp |= (1u<<temp);
+                    bat_subpack[subpack].over_temp |= (1u<<temp);
+                }
+            }
+        }
+        for (temp = 0; temp < (N_OF_TEMP_BOARD / N_OF_SUBPACK); temp++){
+            if (bat_subpack[subpack].board_temps[temp]->bad_counter > ERROR_TEMPERATURE_LIMIT){
+                if (bat_subpack[subpack].board_temps[temp]->bad_type == 0){
+                    bat_subpack[subpack].under_temp_board |= (1u<<temp);
+                }else{
+                    bat_subpack[subpack].over_temp_board |= (1u<<temp);
                 }
             }
         }
     }
     
     // update temperature highest to each node
-    node = 0;
+    subpack = 0;
     uint8_t temp_temp=0;
     uint8_t i=0;
-    for (node=0;node<N_OF_NODE;node++){
-        temp_temp = bat_pack.nodes[node]->temps[0]->temp_c;
-        bat_pack.nodes[node]->high_temp = temp_temp;
-        for (i=1;i<10;i++){
-            if (temp_temp < bat_pack.nodes[node]->temps[i]->temp_c){
-                temp_temp = bat_pack.nodes[node]->temps[i]->temp_c;
-                bat_pack.nodes[node]->high_temp = temp_temp;
+    for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
+        temp_temp = bat_pack.subpacks[subpack]->temps[0]->temp_c;
+        bat_pack.subpacks[subpack]->high_temp = temp_temp;
+        for (i = 1; i < (N_OF_TEMP / N_OF_SUBPACK); i++){
+            if (temp_temp < bat_pack.subpacks[subpack]->temps[i]->temp_c){
+                temp_temp = bat_pack.subpacks[subpack]->temps[i]->temp_c;
+                bat_pack.subpacks[subpack]->high_temp = temp_temp;
             }
         }
     }
@@ -527,28 +698,48 @@ void check_temp(){
     // Update the battery_pack highest temperature
     bat_pack.HI_temp_c = bat_temp[0].temp_c;
     bat_pack.HI_temp_raw = bat_temp[0].temp_raw;
-    for (i=1;i<N_OF_TEMP;i++){
+    for (i = 1; i < N_OF_TEMP; i++){
         if (bat_temp[i].temp_c > bat_pack.HI_temp_c){
             bat_pack.HI_temp_c = bat_temp[i].temp_c;
             bat_pack.HI_temp_raw = bat_temp[i].temp_raw;
-            bat_pack.HI_temp_node = i/10;
+            bat_pack.HI_temp_node = i / (N_OF_TEMP / N_OF_SUBPACK);
         }    
     }
     
+    // Update the battery_pack highest temperature
+    bat_pack.HI_temp_board_c = board_temp[0].temp_c;
+    bat_pack.HI_temp_board_node = 0;
+    
+    for (i = 1; i < N_OF_TEMP_BOARD; i++){
+        if (board_temp[i].temp_c > bat_pack.HI_temp_board_c){
+            bat_pack.HI_temp_board_c = board_temp[i].temp_c;
+            bat_pack.HI_temp_board_node = i / (N_OF_TEMP_BOARD / N_OF_SUBPACK);
+        }    
+    }
     
     // update pack of temp error
-    for (node = 0; node < N_OF_NODE; node++){
-        if (bat_pack.nodes[node]->over_temp != 0){
+    for (subpack = 0; subpack < N_OF_SUBPACK; subpack++){
+        if (bat_pack.subpacks[subpack]->over_temp != 0){
             bat_pack.status |= PACK_TEMP_OVER;
-            bat_err_add(PACK_TEMP_OVER, bat_node[node].over_temp, node);
+            bat_err_add(PACK_TEMP_OVER, bat_subpack[subpack].over_temp, subpack);
         }
 
-        if (bat_pack.nodes[node]->under_temp != 0){
+        if (bat_pack.subpacks[subpack]->under_temp != 0){
             bat_pack.status  |= PACK_TEMP_UNDER;
-            bat_err_add(PACK_TEMP_UNDER, bat_node[node].under_temp, node);
+            bat_err_add(PACK_TEMP_UNDER, bat_subpack[subpack].under_temp, subpack);
+        }
+        
+        if (bat_pack.subpacks[subpack]->over_temp_board != 0){
+            bat_pack.status |= PACK_TEMP_OVER;
+            bat_err_add(PACK_TEMP_OVER, bat_subpack[subpack].over_temp, subpack);
+        }
+
+        if (bat_pack.subpacks[subpack]->under_temp_board != 0){
+            bat_pack.status  |= PACK_TEMP_UNDER;
+            bat_err_add(PACK_TEMP_UNDER, bat_subpack[subpack].under_temp, subpack);
         }
     }
-    */
+    
 }
 
 
@@ -687,7 +878,6 @@ uint8_t temp_transfer(uint16_t in_raw, uint16_t ref){
     float T = beta/log(R/A)-273.16;
     return (uint8_t)ceil(T);
 }
-//void balance_cells(){}// balance_cells()
 
 void voltage_compensation(){
     //should compsensation to top and bottom cells
@@ -834,46 +1024,99 @@ void _SOC_log(){
 
 
 void bat_balance(){
+    LTC68_ClearFIFO();
     
-    /*
     uint8_t ic=0;
     uint8_t cell=0;
     uint8_t i=0;
-    uint8_t temp_cfg[TOTAL_IC][6];
-    uint16_t low_voltage = bat_pack.LO_voltage <= UNDER_VOLTAGE ? UNDER_VOLTAGE :bat_pack.LO_voltage;
+    uint8_t temp_cfg[IC_PER_BUS * N_OF_BUSSES][6];
+    uint16_t low_voltage = bat_pack.LO_voltage <= UNDER_VOLTAGE ? UNDER_VOLTAGE : bat_pack.LO_voltage;
     
-    for (ic=0;ic<TOTAL_IC;ic++){
-        for (i=0;i<6;i++){
+    for (ic = 0; ic < (IC_PER_BUS * N_OF_BUSSES); ic++){
+        for (i = 0; i < 6; i++){
             temp_cfg[ic][i] = tx_cfg[ic][i];
         }
     }
     
-    for (ic=0;ic<TOTAL_IC;ic++){
-        for (cell=0;cell<12;cell++){
+    for (ic = 0; ic < (IC_PER_BUS * N_OF_BUSSES); ic++){
+        
+        for (cell = 0; cell < 12; cell++){
             uint16_t diff = 0;
-            if (cell_codes[ic][cell]/10 > low_voltage)
+            if (cell_codes[ic][cell] / 10 > low_voltage)
                 diff = cell_codes[ic][cell]/10 - low_voltage;
-                
-            //if ((CELL_ENABLE & (0x1<<cell)) && ((cell_codes[ic][cell]/10)-low_voltage > BALANCE_THRESHOLD)){
-            if ( diff > 0 && diff > BALANCE_THRESHOLD ){    
-                // if this cell is 30mV or more higher than the lowest cell
-                if (cell<8){
-                    temp_cfg[ic][4] |= (0x1<<cell);
+            
+            if (ic == 2 || ic == 5 || ic == 8 || ic == 11 || ic == 14 || ic == 17) { // These ICs have different cells used
+                if (!(CELL_ENABLE_HIGH & (0x1 << cell))){ // If not enabled
+                    diff = 0;
+                }    
+            } else { // If not enabled
+                if (!(CELL_ENABLE_LOW & (0x1 << cell))){
+                    diff = 0;
+                } 
+            }
+            
+            // This is here to handle a bug which causes the first cell voltage to be 
+            // wrong sometimes. I think I have fixed it, but I am putting this hear 
+            // just in case
+            if (cell_codes[ic][cell]/10 > 6000) {
+                diff = 0;   
+            }
+            
+            if (diff > 0 && diff > BALANCE_THRESHOLD){    
+                // if this cell is BALANCE_THRESHOLD or more higher than the lowest cell
+                if (cell < 8){
+                    temp_cfg[ic][4] |= (0x1 << cell);
                 }else{
-                    temp_cfg[ic][5] |= (0x1<<(cell-8));
+                    temp_cfg[ic][5] |= (0x1 << (cell - 8));
                 }
             }
+            
         }
+        
     }
+    
+    
+    /*Test code!!!!*/
+    //temp_cfg[9][4] = 0xFF;
+    /* end purely test code */
     
     // discharge time has been set in void LTC6804_init_cfg() already. 0x2 = 1 min
     
-    LTC6804_wrcfg(TOTAL_IC, temp_cfg);
+    Select6820_Write(0);
+    wakeup_sleep();
+    CyDelay(1);
     
-    */
+    
+    LTC6804_wrcfg(IC_PER_BUS, temp_cfg);
+    CyDelay(100);
+    LTC6804_wrcfg(IC_PER_BUS, temp_cfg);
+    CyDelay(100);
+  
+    Select6820_Write(1);
+    wakeup_sleep();
+    CyDelay(1);
+    
+    LTC6804_wrcfg(IC_PER_BUS, temp_cfg + 9);
+    CyDelay(100);
+    LTC6804_wrcfg(IC_PER_BUS, temp_cfg + 9);
+    CyDelay(100);
+    
 }
 
+void bat_clear_balance() {
+    LTC68_ClearFIFO();
 
+    Select6820_Write(0);
+    wakeup_sleep();
+    CyDelay(1);
+    
+    
+    LTC6804_wrcfg(IC_PER_BUS, tx_cfg);
+    CyDelay(100);
+    LTC6804_wrcfg(IC_PER_BUS, tx_cfg);
+    CyDelay(100);
+    
+}
 void DEBUG_balancing_on(){
     /*
     uint8_t ic=0;
